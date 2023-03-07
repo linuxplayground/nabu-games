@@ -95,7 +95,7 @@ void game() {
             if (key == 0x1b) {
                 running = false;
             }
-            else if (key == ',') {          // LEFT ARROW
+            else if (key == ',' || getJoyStatus(0) & Joy_Left) {          // LEFT ARROW
                 if (head.dir == 0) {
                     head.dir = 3;
                     headchar = HEAD_DOWN;
@@ -113,7 +113,7 @@ void game() {
                     headchar = HEAD_RIGHT;
                 }
             }
-            else if (key == '.') {          // RIGHT ARROW
+            else if (key == '.' || getJoyStatus(0) & Joy_Right) {          // RIGHT ARROW
                 if (head.dir == 0) {
                     head.dir = 2;
                     headchar = HEAD_UP;
@@ -219,20 +219,24 @@ void game() {
 
 void replay_menu() {
 
-    vdp_setCursor2(11, 12);
+    vdp_setCursor2(16-(10/2), 12);
     vdp_print("SCORE: ");
     
     sprintf(tb, "%03u", score);
     vdp_print(tb);
 
-    vdp_setCursor2(9, 14);
+    vdp_setCursor2(16-(14/2), 14);
     vdp_print("AGAIN: (Y/N) ?");
+    vdp_setCursor2(16-(25/2), 16);
+    vdp_print("BUTTON TO START");
 
     while (true) {
-        
+        if (getJoyStatus(0) & Joy_Button) {
+            playing = true;
+            break;
+        }
         if(isKeyPressed()) {
             uint8_t res = getChar();
-
             if (res == 'y') {
                 playing = true;
                 break;
@@ -247,16 +251,28 @@ void replay_menu() {
 }
 
 void start_menu() {
-    vdp_setCursor2(6, 6);
+    vdp_setCursor2(16-(5/2), 3);
+    vdp_print("SNAKE");
+    vdp_setCursor2(16-(17/2), 5);
+    vdp_print("BY PRODUCTIONDAVE");
+    vdp_setCursor2(16-(21/2), 15);
     vdp_print("PRESS SPACE TO START");
-    vdp_setCursor2(7, 10);
-    vdp_print("KEYBOARD:");
-    vdp_setCursor2(7, 12);
+    vdp_setCursor2(16-(8/2), 10);
+    vdp_print("KEYBOARD");
+    vdp_setCursor2(16-(13/2), 12);
     vdp_print("LEFT     ,(<)");
-    vdp_setCursor2(7, 13);
+    vdp_setCursor2(16-(13/2), 13);
     vdp_print("RIGHT    .(>)");
+    vdp_setCursor2(16-(19/2), 17);
+    vdp_print("OR USE THE JOYSTICK");
+    vdp_setCursor2(16-(15/2), 18);
+    vdp_print("BUTTON TO START");
     
     while (true) {
+        if (getJoyStatus(0) & Joy_Button) {
+            playing = true;
+            break;
+        }
         if(isKeyPressed()) {
             uint8_t res = getChar();
 

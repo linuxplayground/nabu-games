@@ -13,6 +13,6 @@ zcc +cpm main.c --list -compiler=sdcc -create-app -O3 --opt-code-speed -o snake
 
 echo ****************************************************************************
 
-mkfs.cpm -f naburn "C:\dev\nabu\Nabu Internet Adapter\Store\c.dsk"
+..\tools\mkfs.cpm -f naburn "C:\dev\nabu\Nabu Internet Adapter\Store\c.dsk"
 
-cpmcp -f naburn    "C:\dev\nabu\Nabu Internet Adapter\Store\c.dsk" snake.com 0:
+..\tools\cpmcp -f naburn    "C:\dev\nabu\Nabu Internet Adapter\Store\c.dsk" snake.com 0:
