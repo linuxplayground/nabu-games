@@ -40,6 +40,7 @@ uint8_t songPos;
 uint8_t ticks;
 int16_t score;
 uint8_t tb[64] = { 0x00 };
+bool crashed;
 
 
 void new_apple() {
@@ -72,6 +73,7 @@ void initGame() {
     songPos = 0;
     ticks = 0;
     score = 0;
+    crashed = false;
 }
 
 void game() {
@@ -146,6 +148,7 @@ void game() {
         //check for wall collision
         if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23) {
             running = false;
+            crashed = true;
         }
 
         //check for apple collision
@@ -157,8 +160,9 @@ void game() {
             if (score % 5 == 0 && game_speed > 10)
                 game_speed = game_speed - 10;
             new_apple();
-        } else if (next != 0x00) {
+        } else if (next != 0x00) {  // hit tail
             running = false;
+            crashed = true;
         }
         
         // game speed
@@ -193,9 +197,23 @@ void game() {
             }
             // music play note every 3rd game tick.
             if (ticks % 3 == 0)
-                playNoteDelay(1, song[songPos++ % sizeof(song)], 10);
+                playNoteDelay(2, song[songPos++ % sizeof(song)], 10);
         }
     }
+    if (crashed) {
+        // play crash sound
+        ayWrite(6, 0x0f);
+        ayWrite(7, 0b11000111);
+        ayWrite(8, 0x1f);
+        ayWrite(9, 0x1f);
+        ayWrite(10, 0x1f);
+        ayWrite(11, 0xa0);
+        ayWrite(12, 0x40);
+        ayWrite(13, 0x00);
+        z80_delay_ms(1500);
+        initNABULIBAudio(); // reset to regular music mode
+    }
+
 }
 
 void replay_menu() {
