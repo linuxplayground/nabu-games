@@ -3,10 +3,11 @@
 #define DISABLE_CURSOR
 
 // These patterns have been redefined in patterns.h
-#define HEAD_UP    'a'
-#define HEAD_DOWN  'b'
-#define HEAD_LEFT  'c'
-#define HEAD_RIGHT 'd'
+#define HEAD_UP    0x01
+#define HEAD_DOWN  0x02
+#define HEAD_LEFT  0x03
+#define HEAD_RIGHT 0x04
+#define APPLE      0x05
 
 #include "../NABULIB/NABU-LIB.h"
 #include "patterns.h"
@@ -25,7 +26,7 @@ struct {
 } head;
 
 uint8_t headchar = HEAD_RIGHT;
-uint8_t applechar = 'e';
+uint8_t applechar = APPLE;
 int headIndex;
 int tailIndex;
 int8_t circularBuffer[1536];
@@ -275,9 +276,8 @@ void main() {
     initNABULib();
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false);                 //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll
-    vdp_loadASCIIFont(ASCII);
-    // vdp_loadColorTable(COLOR, sizeof(COLOR));            //Load the default color table. (dark blue on black)
-
+    // vdp_loadPatternTable(ASCII, 0x400);
+    vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
     uint16_t _vdpColorTableAddr = 0x2000;
     uint16_t _vdpColorTableSize = 0x1800;
@@ -289,11 +289,11 @@ void main() {
     vdp_setBackDropColor(VDP_DARK_YELLOW);                  //Set border color
 
     // overwrite special colours.
-    vdp_colorizePattern('e', VDP_LIGHT_GREEN, VDP_BLACK);   //Apple
-    vdp_colorizePattern('a', VDP_MAGENTA, VDP_BLACK);       //Snake head
-    vdp_colorizePattern('b', VDP_MAGENTA, VDP_BLACK);       //Snake head
-    vdp_colorizePattern('c', VDP_MAGENTA, VDP_BLACK);       //Snake head
-    vdp_colorizePattern('d', VDP_MAGENTA, VDP_BLACK);       //Snake head
+    vdp_colorizePattern(APPLE,      VDP_LIGHT_GREEN, VDP_BLACK);   //Apple
+    vdp_colorizePattern(HEAD_UP,    VDP_MAGENTA,     VDP_BLACK);       //Snake head
+    vdp_colorizePattern(HEAD_DOWN,  VDP_MAGENTA,     VDP_BLACK);       //Snake head
+    vdp_colorizePattern(HEAD_LEFT,  VDP_MAGENTA,     VDP_BLACK);       //Snake head
+    vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);       //Snake head
 
     initGame();
     start_menu();
