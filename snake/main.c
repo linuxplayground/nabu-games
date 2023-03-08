@@ -227,7 +227,7 @@ void replay_menu() {
 
     vdp_setCursor2(16-(14/2), 14);
     vdp_print("AGAIN: (Y/N) ?");
-    vdp_setCursor2(16-(25/2), 16);
+    vdp_setCursor2(16-(15/2), 16);
     vdp_print("BUTTON TO START");
 
     while (true) {
