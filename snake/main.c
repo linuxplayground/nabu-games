@@ -28,7 +28,7 @@ uint8_t headchar = HEAD_RIGHT;
 uint8_t applechar = APPLE;
 int headIndex;
 int tailIndex;
-int8_t circularBuffer[1536];
+int8_t circularBuffer[0x4000];
 uint8_t note = 43;
 
 int more_segments;
@@ -171,10 +171,10 @@ void game() {
         //wait for vsync
         if (running) {
             // move the head index along by 2 and roll over if buffer overflow
-            if (headIndex <= 1534) {
+            if (headIndex <= 0x4000) {
                 headIndex = headIndex + 2;
             } else {
-                headIndex = 0;
+                headIndex = 0;      // Always bring the head to just after the tail.
             }
             // push head location to ring buffer.
             circularBuffer[headIndex] = head.x;
@@ -187,10 +187,10 @@ void game() {
 
             // if we are not groing, move the tail pointer along
             if (more_segments == 0) {
-                if (tailIndex <= 1534) {
+                if (tailIndex <= 0x4000) {
                     tailIndex = tailIndex + 2;
                 } else {
-                    tailIndex = -2;
+                    tailIndex = 0;
                 }
             } else {
                 more_segments = more_segments - 1;
