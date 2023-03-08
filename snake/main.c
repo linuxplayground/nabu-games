@@ -11,7 +11,6 @@
 
 #include "../NABULIB/NABU-LIB.h"
 #include "patterns.h"
-// #include "colors.h"
 #include <arch/z80.h> // for z80_delay_ms()
 
 struct {
@@ -203,10 +202,10 @@ void game() {
     }
     if (crashed) {
         // play crash sound
-        ayWrite(6, 0x0f);
-        ayWrite(7, 0b11000111);
-        ayWrite(8, 0x1f);
-        ayWrite(9, 0x1f);
+        ayWrite(6,  0x0f);
+        ayWrite(7,  0b11000111);
+        ayWrite(8,  0x1f);
+        ayWrite(9,  0x1f);
         ayWrite(10, 0x1f);
         ayWrite(11, 0xa0);
         ayWrite(12, 0x40);
@@ -219,6 +218,7 @@ void game() {
 
 void replay_menu() {
 
+    vdp_setCursor2(16-(10/2), 12);
     vdp_setCursor2(16-(10/2), 12);
     vdp_print("SCORE: ");
     
@@ -255,14 +255,14 @@ void start_menu() {
     vdp_print("SNAKE");
     vdp_setCursor2(16-(17/2), 5);
     vdp_print("BY PRODUCTIONDAVE");
-    vdp_setCursor2(16-(21/2), 15);
-    vdp_print("PRESS SPACE TO START");
     vdp_setCursor2(16-(8/2), 10);
     vdp_print("KEYBOARD");
     vdp_setCursor2(16-(13/2), 12);
     vdp_print("LEFT     ,(<)");
     vdp_setCursor2(16-(13/2), 13);
     vdp_print("RIGHT    .(>)");
+    vdp_setCursor2(16-(21/2), 15);
+    vdp_print("PRESS SPACE TO START");
     vdp_setCursor2(16-(19/2), 17);
     vdp_print("OR USE THE JOYSTICK");
     vdp_setCursor2(16-(15/2), 18);
