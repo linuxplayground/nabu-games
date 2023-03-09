@@ -10,7 +10,7 @@
 #define APPLE      0x05
 
 #include "../NABULIB/NABU-LIB.h"
-#include "patterns.h"
+#include "../include/patterns.h"
 #include <arch/z80.h> // for z80_delay_ms()
 
 struct {
