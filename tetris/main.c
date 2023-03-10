@@ -3,7 +3,10 @@
 #define DISABLE_CURSOR
 
 #include "../NABULIB/NABU-LIB.h"
+#include "../NABULIB/NabuTracker.h"
 #include "../include/patterns.h"
+#include "tetris-nt.h"
+// #include "baseattack-nt.h"
 #include "tetris.h"
 #include <arch/z80.h> // for z80_delay_ms()
 
@@ -11,8 +14,10 @@ uint8_t tb[64];
 
 void initDisplay() {
     initNABULib();
+    nt_init(music);
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll
+    vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
     uint16_t _vdpColorTableAddr = 0x2000;
@@ -146,7 +151,7 @@ void play() {
     int8_t f;
     bool running = true;
     uint16_t ticks = 0;
-    uint8_t game_speed = 30;
+    uint16_t game_speed = 30;
     uint8_t lines[4];
     uint16_t score = 0;
     uint8_t level = 1;
@@ -161,7 +166,7 @@ void play() {
 
     while (running) {
         n = rand()%7;       // choose next block
-        f = 0;          // first frame.
+        f = 0;              // first frame.
         uint8_t x = 11;     // middle of play area
         uint8_t y = 1;      // top row of play area
 
@@ -169,12 +174,15 @@ void play() {
         displayTet(x,y,t,f);
 
         while (true) {
+            vdp_waitVDPReadyInt();
             ticks ++;
-            z80_delay_ms(20);
+            if (ticks % 7 == 0) {
+                nt_handleNote();
+            }
             if (isKeyPressed()) {
                 uint8_t key = getChar();
                 if (key == ',') {
-                    playNoteDelay(1,36,3);
+                    //playNoteDelay(2,36,3);
                     clearTet(x,y,t,f);
                     if(isSpaceFree(x-1,y,t,f)) {
                         x --;
@@ -183,7 +191,7 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == '.') {
-                    playNoteDelay(1,36,3);
+                    //playNoteDelay(2,36,3);
                     clearTet(x,y,t,f);
                     if(isSpaceFree(x+1,y,t,f)) {
                         x ++;
@@ -192,7 +200,7 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == 'z') {
-                    playNoteDelay(1,38,3);
+                    //playNoteDelay(2,38,3);
                     clearTet(x,y,t,f);
                     f --;
                     if (f < 0) {
@@ -208,7 +216,7 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == 'x') {
-                    playNoteDelay(1,38,3);
+                    //playNoteDelay(2,38,3);
                     clearTet(x,y,t,f);
                     f ++;
                     if (f > tets[t].count-1) {
@@ -234,10 +242,9 @@ void play() {
             }
 
             if (ticks % game_speed == 0) {  // game speed modifier
-                // only fall every 10th tick.
                 // play a note when falling
-                if (game_speed > 1)
-                    playNoteDelay(0,9,3);   // don't play if have done a drop.
+                // if (game_speed > 1)
+                //     playNoteDelay(0,9,3);   // don't play if have done a drop.
                 clearTet(x,y,t,f);
                 if (isSpaceFree(x, y + 1, t, f)) {
                     y++;
@@ -276,7 +283,7 @@ void play() {
         }
         clearTet(21, 3, n, 0);  //clear the next block ready for the new one.
         t = n;
-        game_speed = 40-(5*level);
+        game_speed = 30-(3*level);
         if (game_speed < 1)
             game_speed = 1;
     }
@@ -316,5 +323,7 @@ void main() {
     while(menu()) {
         setupMap();
         play();
+        nt_stopSounds();
     }
+    vdp_disableVDPReadyInt();
 }
