@@ -6,7 +6,6 @@
 #include "../NABULIB/NabuTracker.h"
 #include "../include/patterns.h"
 #include "tetris-nt.h"
-// #include "baseattack-nt.h"
 #include "tetris.h"
 #include <arch/z80.h> // for z80_delay_ms()
 
@@ -177,7 +176,7 @@ void play() {
             vdp_waitVDPReadyInt();
             ticks ++;
             if (ticks % 7 == 0) {
-                nt_handleNote();
+                nt_handleNote(2);
             }
             if (isKeyPressed()) {
                 uint8_t key = getChar();
