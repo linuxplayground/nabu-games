@@ -81,7 +81,7 @@ void game() {
     // Game loop
     while(running) {
         ticks = ticks + 1;
-            // get key
+        // get key
         if(isKeyPressed()) {
             uint8_t key = getChar();
             /*
@@ -94,7 +94,7 @@ void game() {
             if (key == 0x1b) {
                 running = false;
             }
-            else if (key == ',' || getJoyStatus(0) & Joy_Left) {          // LEFT ARROW
+            else if (key == ',') {          // LEFT ARROW
                 if (head.dir == 0) {
                     head.dir = 3;
                     headchar = HEAD_DOWN;
@@ -112,7 +112,7 @@ void game() {
                     headchar = HEAD_RIGHT;
                 }
             }
-            else if (key == '.' || getJoyStatus(0) & Joy_Right) {          // RIGHT ARROW
+            else if (key == '.') {          // RIGHT ARROW
                 if (head.dir == 0) {
                     head.dir = 2;
                     headchar = HEAD_UP;
@@ -131,6 +131,43 @@ void game() {
                 }
             }
         }
+        if (getJoyStatus(0) & Joy_Left) {
+            if (head.dir == 0) {
+                head.dir = 3;
+                headchar = HEAD_DOWN;
+            }
+            else if (head.dir == 1) {
+                head.dir = 2;
+                headchar = HEAD_UP;
+            }
+            else if (head.dir == 2) {
+                head.dir = 0;
+                headchar = HEAD_LEFT;
+            }
+            else if (head.dir == 3) {
+                head.dir = 1;
+                headchar = HEAD_RIGHT;
+            }
+        }
+        if (getJoyStatus(0) & Joy_Right) {
+            if (head.dir == 0) {
+                head.dir = 2;
+                headchar = HEAD_UP;
+            }
+            else if (head.dir == 1) {
+                head.dir = 3;
+                headchar = HEAD_DOWN;
+            }
+            else if (head.dir == 2) {
+                head.dir = 1;
+                headchar = HEAD_RIGHT;
+            }
+            else if (head.dir == 3) {
+                head.dir = 0;
+                headchar = HEAD_LEFT;
+            }
+        }
+        
         // move the head
         if (head.dir == 0) {
             head.x --;
