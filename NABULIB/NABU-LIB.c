@@ -38,20 +38,24 @@ void initNABULib() {
   ld a, INTERUPT_VECTOR_MAP_MSB;
   ld i, a;
 
+  #ifndef RETRO
   #ifndef DISABLE_HCCA_RX_INT
     // HCCA Receive
     ld hl, _isrHCCARX;
     ld (INTERUPT_VECTOR_MAP_ADDRESS), hl;
   #endif 
+  #endif
 
     // // HCCA Send
     // ld hl, _isrHCCATX;
     // ld (INTERUPT_VECTOR_MAP_ADDRESS + 2), hl;
 
+  #ifndef RETRO
   #ifndef DISABLE_KEYBOARD_INT
     // HCCA Keyboard
     ld hl, _isrKeyboard;
     ld (INTERUPT_VECTOR_MAP_ADDRESS + 4), hl;
+  #endif
   #endif
 
     // // Video Frame Sync
@@ -87,15 +91,19 @@ void initNABULib() {
     _ORIGINAL_INT_MASK = ayRead(IOPORTA);
   #endif
 
-  #ifndef DISABLE_HCCA_RX_INT
-    _ORIGINAL_INT_MASK |= INT_MASK_HCCARX;
+  #ifndef RETRO
+    #ifndef DISABLE_HCCA_RX_INT
+      _ORIGINAL_INT_MASK |= INT_MASK_HCCARX;
+    #endif
+
+    #ifndef DISABLE_KEYBOARD_INT
+      _ORIGINAL_INT_MASK |= INT_MASK_KEYBOARD;
+    #endif
   #endif
 
-  #ifndef DISABLE_KEYBOARD_INT
-    _ORIGINAL_INT_MASK |= INT_MASK_KEYBOARD;
+  #ifndef RETRO
+    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
   #endif
-
-  ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
 
   NABU_EnableInterrupts();
 
@@ -400,21 +408,19 @@ void RightShift(uint8_t *arr, uint16_t len, uint8_t n) {
 // **************************************************************************
 
 void ayWrite(uint8_t reg, uint8_t val) {
-
   IO_AYLATCH = reg;
 
   IO_AYDATA = val;
 }
 
 uint8_t ayRead(uint8_t reg) {
-
   IO_AYLATCH = reg;
 
   return IO_AYDATA;
 }
 
 void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
-
+  #ifndef RETRO
   // Set the envolope length
   ayWrite(11, delayLength >> 8);
   ayWrite(12, delayLength & 0xff);
@@ -454,10 +460,12 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
       ayWrite(13, 0b00000000);
       break;
   }
+  #else
+  channel = 0;
+  note = 0;
+  delayLength = 0;
+  #endif
 }
-
-
-
 
 
 // **************************************************************************
@@ -468,48 +476,52 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 #ifndef DISABLE_KEYBOARD_INT
 
   uint8_t isKeyPressed() {
-
-    return (_kbdBufferWritePos != _kbdBufferReadPos);
+    #ifdef RETRO
+      uint8_t hit = kbhit();
+       if (hit == 0) {
+        return false;
+       } else {
+        _kbdBuffer[_kbdBufferWritePos] = getch();
+        _kbdBufferWritePos ++;
+        return true;
+       }
+    #else
+      return (_kbdBufferWritePos != _kbdBufferReadPos);
+    #endif
   }
 
   uint8_t getChar() {
+      #if defined(DISABLE_CURSOR) || defined(DISABLE_VDP)
+        while (_kbdBufferWritePos == _kbdBufferReadPos);   
+      #else
 
-    #if defined(DISABLE_CURSOR) || defined(DISABLE_VDP)
+        uint16_t cursorCnt = 0;
 
-      while (_kbdBufferWritePos == _kbdBufferReadPos);   
+        while (_kbdBufferWritePos == _kbdBufferReadPos)
+          if (CURSOR_CHAR != 0) {
 
-    #else
+            if (cursorCnt == 1)
+              vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, CURSOR_CHAR);
+            else if (cursorCnt == 15000)
+              vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, ' ');
+            else if (cursorCnt > 30000)     
+              cursorCnt = 0;
+            
+            cursorCnt++;
+          }
+        
+        if (CURSOR_CHAR != 0)
+          vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, ' ');
+      #endif
 
-      uint16_t cursorCnt = 0;
-
-      while (_kbdBufferWritePos == _kbdBufferReadPos)
-        if (CURSOR_CHAR != 0) {
-
-          if (cursorCnt == 1)
-            vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, CURSOR_CHAR);
-          else if (cursorCnt == 15000)
-            vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, ' ');
-          else if (cursorCnt > 30000)     
-            cursorCnt = 0;
-          
-          cursorCnt++;
-        }
-      
-      if (CURSOR_CHAR != 0)
-        vdp_writeCharAtLocation(vdp_cursor.x, vdp_cursor.y, ' ');
-
-    #endif
-
-    uint8_t key = _kbdBuffer[_kbdBufferReadPos];
-
-    _kbdBufferReadPos++;
+      uint8_t key = _kbdBuffer[_kbdBufferReadPos];
+      _kbdBufferReadPos++;
 
     return key;
   }
 
   uint8_t getJoyStatus(uint8_t joyNum) {
-
-      return _joyStatus[joyNum];
+    return _joyStatus[joyNum];
   }
 
   #ifndef DISABLE_VDP

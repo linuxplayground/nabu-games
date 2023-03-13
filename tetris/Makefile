@@ -3,4 +3,4 @@ include ../Makefile
 all: tetris
 
 tetris: 
-	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/TETRIS.COM main.c
+	$(ZCC) $(CFLAGS) -DRETRO -o$(BUILDDIR)/TETRIS.COM main.c

@@ -3,5 +3,5 @@ include ../Makefile
 all: snake
 
 snake: 
-	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/SNAKE.COM main.c
+	$(ZCC) $(CFLAGS) -DRETRO=true -o$(BUILDDIR)/SNAKE.COM main.c
 

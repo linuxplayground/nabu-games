@@ -25,7 +25,7 @@ void nt_stopSounds() {
 }
 
 void nt_handleNote(uint8_t step) {
-
+  #ifndef RETRO
   // time (0)
   while (_song[_itemCntr] == _beatCntr) {
   
@@ -91,4 +91,7 @@ void nt_handleNote(uint8_t step) {
   }
 
   _beatCntr++;
+  #else
+  step = 0;
+  #endif
 }

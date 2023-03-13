@@ -281,9 +281,7 @@ void replay_menu() {
                 playing = false;
                 break;
             }
-
         }
-
     }
 }
 
