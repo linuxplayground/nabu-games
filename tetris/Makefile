@@ -1,9 +1,6 @@
-include ../Makefile
-.PHONY: all
-all: cpm nabu disk copy pub
+TOP=../
+include $(TOP)/Makefile
+PROJECT = tetris
+SOURCE = main.c
 
-cpm: 
-	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/TETRIS.COM main.c
-
-nabu:
-	$(ZCC) $(NABUCFLAGS) -o$(BUILDDIR)/000001.nabu main.c
+one: clean cpm disk copy pub

@@ -1,9 +1,6 @@
-include ../Makefile
-.PHONY: all
-all: cpm nabu disk copy pub
+TOP=../
+include $(TOP)/Makefile
+PROJECT = snake
+SOURCE = main.c
 
-cpm: 
-	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/SNAKE.COM main.c
-
-nabu:
-	$(ZCC) $(NABUCFLAGS) -o$(BUILDDIR)/000002.nabu main.c
+one: clean cpm disk copy pub
