@@ -1,6 +1,9 @@
 include ../Makefile
 .PHONY: all
-all: tetris
+all: cpm nabu disk copy pub
 
-tetris: 
+cpm: 
 	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/TETRIS.COM main.c
+
+nabu:
+	$(ZCC) $(NABUCFLAGS) -o$(BUILDDIR)/000001.nabu main.c

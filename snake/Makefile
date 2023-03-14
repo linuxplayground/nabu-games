@@ -1,7 +1,9 @@
 include ../Makefile
 .PHONY: all
-all: snake
+all: cpm nabu disk copy pub
 
-snake: 
+cpm: 
 	$(ZCC) $(CFLAGS) -o$(BUILDDIR)/SNAKE.COM main.c
 
+nabu:
+	$(ZCC) $(NABUCFLAGS) -o$(BUILDDIR)/000002.nabu main.c

@@ -1,4 +1,3 @@
-#define BIN_TYPE BIN_CPM
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
 
@@ -46,9 +45,15 @@ void initDisplay() {
     for (uint8_t i = 123; i<126; i++) {
         vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
     }
-    //Tetris blocks are MAGENTA
-    vdp_colorizePattern(0x0c, VDP_MAGENTA, VDP_BLACK);
-
+    //Tetris block colours
+    vdp_colorizePattern(0x0c, VDP_CYAN, VDP_BLACK);
+    vdp_colorizePattern(0x11, VDP_DARK_BLUE, VDP_BLACK);
+    vdp_colorizePattern(0x12, VDP_LIGHT_RED, VDP_BLACK);
+    vdp_colorizePattern(0x13, VDP_LIGHT_YELLOW, VDP_BLACK);
+    vdp_colorizePattern(0x14, VDP_LIGHT_GREEN, VDP_BLACK);
+    vdp_colorizePattern(0x15, VDP_DARK_RED, VDP_BLACK);
+    vdp_colorizePattern(0x16, VDP_MAGENTA, VDP_BLACK);
+    
     vdp_setBackDropColor(VDP_DARK_YELLOW);          //Set border color
 }
 

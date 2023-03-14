@@ -65,11 +65,11 @@ void initGame() {
     head.y = 12;
     head.dir = 1;
     running = true;
-    game_speed = 100;
+    game_speed = 140;
     headchar = HEAD_RIGHT;
     headIndex = -2;
     tailIndex = -2;
-    more_segments = 3;
+    more_segments = 2;
     songPos = 0;
     ticks = 0;
     score = 0;
@@ -192,7 +192,7 @@ void game() {
         uint8_t next = vdp_getCharAtLocationVRAM(head.x, head.y);
         if (next == applechar){
             playNoteDelay(0, note, 15);
-            more_segments = 3;
+            more_segments = 2;
             score += 1;
             if (score % 5 == 0 && game_speed > 10)
                 game_speed = game_speed - 10;
