@@ -24,7 +24,7 @@ void nt_stopSounds() {
   ayWrite(10, 0);
 }
 
-void nt_handleNote(uint8_t step) {
+void nt_handleNote() {
 
   // time (0)
   while (_song[_itemCntr] == _beatCntr) {
@@ -44,7 +44,7 @@ void nt_handleNote(uint8_t step) {
 
       case NT_NOTE_ON: {
 
-        uint8_t note = _song[_itemCntr + 2] + step * 12;
+        uint8_t note = _song[_itemCntr + 2];
 
         switch (_song[_itemCntr + 1]) {
 

@@ -33,6 +33,19 @@ void initDisplay() {
     for (uint8_t i = 48; i < 58; i++) {
         vdp_colorizePattern(i, VDP_DARK_RED, VDP_BLACK);
     }
+    //Make puctuation in LIGHT GREEN
+    for (uint8_t i = 32; i<=47; i++) {
+        vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
+    }
+    for (uint8_t i = 58; i<=64; i++) {
+        vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
+    }
+    for (uint8_t i = 91; i<=96; i++) {
+        vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
+    }
+    for (uint8_t i = 123; i<126; i++) {
+        vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
+    }
     //Tetris blocks are MAGENTA
     vdp_colorizePattern(0x0c, VDP_MAGENTA, VDP_BLACK);
 
@@ -176,8 +189,50 @@ void play() {
             vdp_waitVDPReadyInt();
             ticks ++;
             if (ticks % 7 == 0) {
-                nt_handleNote(2);
+                nt_handleNote();
             }
+            if (ticks % 6 == 0) {  //only take joystick input every 6th tick (every 100ms)
+                if (getJoyStatus(0) & Joy_Left) {
+                    clearTet(x,y,t,f);
+                    if(isSpaceFree(x-1,y,t,f)) {
+                        x --;
+                        displayTet(x,y,t,f);
+                    } else {
+                        displayTet(x,y,t,f);
+                    }
+                }
+                if (getJoyStatus(0) & Joy_Right) {
+                    clearTet(x,y,t,f);
+                    if(isSpaceFree(x+1,y,t,f)) {
+                        x ++;
+                        displayTet(x,y,t,f);
+                    } else {
+                        displayTet(x,y,t,f);
+                    }
+                }
+                if (getJoyStatus(0) & Joy_Down) {
+                    playNoteDelay(2,24,15);
+                    game_speed = 1;     // cant be 0 because of modulus of game ticks.
+                }
+                if (getJoyStatus(0) & Joy_Button) {
+                    clearTet(x,y,t,f);
+                    f ++;
+                    if (f > tets[t].count-1) {
+                        f = 0;
+                    }
+
+                    if (isSpaceFree(x,y,t,f)) {
+                        displayTet(x,y,t,f);
+                    } else {
+                        f --;
+                        if (f < 0) {
+                            f = tets[t].count-1;
+                        }
+                        displayTet(x,y,t,f);
+                    }
+                }
+            }
+            
             if (isKeyPressed()) {
                 uint8_t key = getChar();
                 if (key == ',') {
@@ -302,10 +357,21 @@ bool menu() {
     vdp_print("X & Z ROTATE");
     vdp_setCursor2(13-(10/2),10);
     vdp_print("SPACE DROP");
-
-    vdp_setCursor2(13-(8/2),14);
+    vdp_setCursor2(13-(8/2) ,12);
+    vdp_print("JOYSTICK");
+    vdp_setCursor2(13-(12/2),13);
+    vdp_print("LEFT & RIGHT");
+    vdp_setCursor2(13-(10/2) ,14);
+    vdp_print("BTN ROTATE");
+    vdp_setCursor2(13-(12/2) ,15);
+    vdp_print("DOWN TO DROP");
+    vdp_setCursor2(13-(8/2),17);
     vdp_print("ESC QUIT");
+
     while (true) {
+        if (getJoyStatus(0) & Joy_Button) {
+            return true;
+        }
         if (isKeyPressed()) {
             if (getChar() == 0x1b) {
                 return false;
