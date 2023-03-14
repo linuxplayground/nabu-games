@@ -1,0 +1,17 @@
+BASEDIR=/home/davidlatham/dev/nabu/nabu-games
+Z88DIR=$(HOME)/dev/retro/z88dk-build/z88dk/
+ZCC=$(Z88DIR)/bin/zcc
+INCLUDES = lib/
+CFLAGS = -I$(INCLUDES) +cpm -DBIN_TYPE=BIN_CPM --list -compiler=sdcc -create-app -O3 --opt-code-speed
+NABUCFLAGS = +nabu -vn -DBIN_TYPE=NABU --list -m -create-app -compiler=sdcc
+
+BUILDDIR = $(BASEDIR)/build
+DISKDIR = $(BASEDIR)/disk
+COMFILES = $(wildcard $(BUILDDIR)/*/*.COM)
+STOREDIR = "/mnt/c/dev/nabu/Nabu Internet Adapter/Store/"
+
+PROJECTS = 'snake' 'tetris'
+MKDIR = mkdir -pv
+
+export PATH := $(Z88DIR)/bin/:$(PATH)
+export ZCCCFG := $(Z88DIR)/lib/config
