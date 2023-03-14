@@ -156,9 +156,27 @@ uint8_t checkCompletedLines(uint8_t *lines) {
     return completed_lines;
 }
 
-void play() {
+int new_block() {
+    //Reset used blocks if we hav
+    if (block_count == 7) {
+        for(uint8_t i=0; i<7; i++) {
+            used_blocks[i] = 0;
+        }
+        block_count = 0;
+    }
+    uint8_t t;
+    while(true) {
+        t = rand()%7;   // choose first block
+        if (!used_blocks[t])
+            break;
+    }
+    block_count ++;
+    used_blocks[t] = 1;
+    return t;
+}
 
-    uint8_t t = rand()%7;   // choose first block
+void play() {
+    uint8_t t = new_block();
     uint8_t n;
     int8_t f;
     bool running = true;
@@ -169,6 +187,13 @@ void play() {
     uint8_t level = 1;
     uint8_t cleared_lines = 0;
 
+    // Keep track of button and down so we can action down on release event
+    // and not allow multiple rotate actions without a release between.
+    uint8_t btn_state = 0;
+    uint8_t dn_state = 0;
+
+
+
     vdp_setCursor2(21,11);
     vdp_writeUInt8(cleared_lines);
     vdp_setCursor2(21,16);
@@ -177,7 +202,7 @@ void play() {
     vdp_writeInt8(level);
 
     while (running) {
-        n = rand()%7;       // choose next block
+        n = new_block();
         f = 0;              // first frame.
         uint8_t x = 11;     // middle of play area
         uint8_t y = 1;      // top row of play area
@@ -210,11 +235,13 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 }
-                if (getJoyStatus(0) & Joy_Down) {
+                if (getJoyStatus(0) & Joy_Down && dn_state == 0) {
                     playNoteDelay(2,24,15);
                     game_speed = 1;     // cant be 0 because of modulus of game ticks.
+                    dn_state = 1;
                 }
-                if (getJoyStatus(0) & Joy_Button) {
+
+                if (getJoyStatus(0) & Joy_Button && btn_state == 0) {
                     clearTet(x,y,t,f);
                     f ++;
                     if (f > tets[t].count-1) {
@@ -230,9 +257,17 @@ void play() {
                         }
                         displayTet(x,y,t,f);
                     }
+                    btn_state = 1;
+                }
+            } else {
+                if (!(getJoyStatus(0) & Joy_Button)) {  // we try to know i the joystick is in nutral.
+                    btn_state = 0;
+                }
+                if (!(getJoyStatus(0) & Joy_Down)) {
+                    dn_state = 0;
                 }
             }
-            
+
             if (isKeyPressed()) {
                 uint8_t key = getChar();
                 if (key == ',') {

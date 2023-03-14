@@ -1,3 +1,6 @@
+uint8_t block_count = 0;
+uint8_t used_blocks[7] = {0,0,0,0,0,0,0};
+
 /*
 * TETRONIMOS
 */
