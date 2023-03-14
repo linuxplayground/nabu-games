@@ -9,7 +9,7 @@ echo ***************************************************************************
 del *.com
 del snake
 
-zcc +cpm main.c --list -compiler=sdcc -create-app -O3 --opt-code-speed -o invaders
+zcc +cpm main.c -DBIN_TYPE=BIN_CPM --list -compiler=sdcc -create-app -O3 --opt-code-speed -o invaders
 
 echo ****************************************************************************
 

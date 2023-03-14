@@ -1,4 +1,4 @@
-#define BIN_TYPE BIN_CPM
+// #define BIN_TYPE BIN_CPM <---- DEFINED IN MAKEFILE
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
 
