@@ -1,4 +1,4 @@
-TOP=../
+TOP=..
 include $(TOP)/Makefile
 PROJECT = snake
 SOURCE = main.c
