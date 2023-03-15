@@ -1,6 +1,7 @@
 # Override any of the above settings in your own make.local file
-include Make.default
--include Make.local
+SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(SELF_DIR)Make.default
+-include $(SELF_DIR)Make.local
 
 .PHONY: all cpm nabu disk copy pub clean
 all: clean $(PROJECTS) disk copy pub
