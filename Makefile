@@ -3,6 +3,8 @@ SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(SELF_DIR)Make.default
 -include $(SELF_DIR)Make.local
 
+GIT_TAG=$(shell git describe --exact-match --tags --abbrev=0)
+
 .PHONY: all cpm nabu disk copy pub clean
 all: clean $(PROJECTS) disk copy pub
 
@@ -31,4 +33,9 @@ pub: $(DISKDIR)/c.dsk
 clean:
 	rm -frv $(BUILDDIR)/*
 	rm -frv $(DISKDIR)/*
+
+release:
+	cd $(BUILDDIR); tar -c -z -v -f  nabu-games-$(GIT_TAG).tgz */*.COM */*.NABU
+	cd $(BUILDDIR); zip  -r -v  nabu-games-$(GIT_TAG).zip */*.COM */*.NABU
+
 
