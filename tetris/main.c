@@ -409,7 +409,7 @@ bool menu() {
     vdp_setCursor2(13-(8/2),17);
     vdp_print("ESC QUIT");
     vdp_setCursor2(13-(4/2),19);
-    vdp_print("V2.0");
+    vdp_print("V2.1");
     vdp_setCursor2(13-(11/2),20);
     vdp_print("PRODUCTION-");
     vdp_setCursor2(13-(4/2),21);
@@ -438,4 +438,10 @@ void main() {
         nt_stopSounds();
     }
     vdp_disableVDPReadyInt();
+    #if BIN_TYPE == BIN_HOMEBREW
+    __asm
+        di
+        rst 0x00
+    __endasm;
+    #endif
 }

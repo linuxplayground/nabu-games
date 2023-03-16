@@ -87,7 +87,7 @@ bool menu() {
 
     vdp_clearScreen();
     vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V2.0");
+    vdp_print("SNAKE - V2.1");
     vdp_setCursor2(16-(17/2),5);
     vdp_print("BY PRODUCTIONDAVE");
     vdp_setCursor2(16-(13/2),8);
@@ -244,4 +244,10 @@ void main() {
         ayWrite(13, 0x00);
     };
     vdp_disableVDPReadyInt();
+    #if BIN_TYPE == BIN_HOMEBREW
+    __asm
+        di
+        rst 0x00
+    __endasm;
+    #endif
 }
