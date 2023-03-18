@@ -15,7 +15,7 @@ void initDisplay() {
     initNABULib();
     nt_init(music);
     vdp_clearVRAM();
-    vdp_initG2Mode(1, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll
+    vdp_initG2Mode(1, false, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
     vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
