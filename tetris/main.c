@@ -10,12 +10,14 @@
 #include <arch/z80.h> // for z80_delay_ms()
 
 uint8_t tb[64];
+uint8_t tb8[4];
+uint8_t tb16[6];
 
 void initDisplay() {
     initNABULib();
     nt_init(music);
     vdp_clearVRAM();
-    vdp_initG2Mode(1, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll
+    vdp_initG2Mode(1, false, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
     vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
@@ -198,14 +200,17 @@ void play() {
     uint8_t btn_state = 0;
     uint8_t dn_state = 0;
 
-
-
+    sprintf(tb8, "%d", cleared_lines);
     vdp_setCursor2(21,11);
-    vdp_writeUInt8(cleared_lines);
+    vdp_print(tb8);
+
+    sprintf(tb16, "%d", score);
     vdp_setCursor2(21,16);
-    vdp_writeInt16(score);
+    vdp_print(tb16);
+
+    sprintf(tb8, "%d", level);
     vdp_setCursor2(21,21);
-    vdp_writeInt8(level);
+    vdp_print(tb8);
 
     while (running) {
         n = new_block();
@@ -369,12 +374,17 @@ void play() {
             if (completed_lines == 4) {
                 score = score + 10;
             }
+            sprintf(tb16, "%d", score);
             vdp_setCursor2(21,16);
-            vdp_writeInt16(score);
+            vdp_print(tb16);
+
+            sprintf(tb8, "%d", cleared_lines);
             vdp_setCursor2(21,11);
-            vdp_writeUInt8(cleared_lines);
+            vdp_print(tb8);
+
+            sprintf(tb8, "%d", level);
             vdp_setCursor2(21,21);
-            vdp_writeInt8(level);
+            vdp_print(tb8);
         }
         clearTet(21, 3, n, 0);  //clear the next block ready for the new one.
         t = n;

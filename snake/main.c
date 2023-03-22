@@ -61,7 +61,7 @@ void init() {
     initNABULIBAudio();
     nt_init(music);
     vdp_clearVRAM();
-    vdp_initG2Mode(1, false, false, false);
+    vdp_initG2Mode(1, false, false, false, false);
     vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     uint16_t _vdpColorTableAddr = 0x2000;

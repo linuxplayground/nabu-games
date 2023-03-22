@@ -3,7 +3,7 @@
 // DJ Sures (c) 2023
 // https://nabu.ca
 // 
-// Last updated on March 6, 2023 (v2023.03.07.00)
+// Last updated on March 22, 2023 (v2023.03.22.00)
 // 
 // Get latest copy and examples from: https://github.com/DJSures/NABU-LIB
 // 
@@ -12,6 +12,13 @@
 // into sections based on the peripheral.  
 // 
 // Read the summaries below for details of each function in this file.
+//
+// ----------------------------------------------------------------------------------------------
+// GETTING STARTED
+// There is a SKELETON project in my GitHub that I recommend you begin with. The skeleton project
+// contains the framework that you can start with by following one of my online tutorials in
+// YouTube.
+// ----------------------------------------------------------------------------------------------
 //
 // Make something,
 // DJ Sures
@@ -26,55 +33,17 @@
 #define BIN_CPM 200
 #define byte uint8_t
 
-// **************************************************************************
-// 
-// CONFIGURE FONT or PATTERN TABLE
-// -------------------------------
-// 
-// If you will be using the VDP, you will need either a default font or pattern table.
-// Loading just a font is smaller than an entire pattern table, but both options are
-// available to you. For just a textmode, that doesn't use CP/M's stdio, then you can
-// use vdp_loadASCIIFont() and supply an existing pattern.h font, or your custom one.
-//
-// The diference between a FONT and a PATTERN is the size. A FONT is just the visible 
-// written 127 ASCII characters, starting at ASCII Decimal 37 (space bar). The PATTERN
-// is the entire pattern memory (256 characters) that include text and image patterns.
-// Generaly, if you're just using text, then load the vdp_loadASCIIFont() which can be used in
-// both G2 and Text mode.
-//
-// USE ONE OF OUR FONTS
-// --------------------
-// 1) Include the "patterns.h" in your file #include "patterns.h"
-// 2) Add one of these #define's into your main.c program.
-// #define FONT_AMIGA
-// #define FONT_SET1
-// #define FONT_STANDARD
-// #define FONT_LM80C
-// 3) call vdp_loadASCIIFont(ASCII);
-//
-// USE YOUR FONT
-// -------------
-// If you with to use your own font, specify the font as:
-//
-//    const uint8_t[768] ASCII = {} 
-//
-// Once your font has been created, add it with vdp_loadASCIIFont(ASCII);
-//
-// *Note: You do not need to include a font if DISABLE_VDP is set and you're
-//        building a text-only cp/m program that uses stdio.
-// **************************************************************************
-
 
 // **************************************************************************
 // 
 // BINARY TYPE
-// -----------
-// 
+// ===========
 // It is important to define what kind of binary we are going to be creating.
 // Add one of these two options to the top of your main.c before the #include
 // statements.
 //
 // HOMEBREW
+// --------
 // This binary is executable as a standalone application from the NABU
 // Internet Adapter or as a NABU Channel. Compiling for HOMEBREW uses
 // the following example commandline:
@@ -83,6 +52,7 @@
 //
 //
 // Cloud CP/M
+// ----------
 // A binary that produces a .COM executable which will be run on the
 // Cloud CP/M Operating System. If you decide to create a HOMEBREW program,
 // but also want the same code to work in CPM, you can set this to HOMEBREW
@@ -96,20 +66,20 @@
 // what features are enabled. You can add each #pragma option to the top of your main.c
 // to disable that feature and save filesize and RAM.
 //
-//    #pragma output nostreams
 //    Disable stdio. Useful if not using DISABLE_VDP, and therefore you're using only the CPM built-in functions.
+//    #pragma output nostreams
 //
-//    #pragma output nofileio
 //    No FILEIO. This disables all ability to read/write CPM files
+//    #pragma output nofileio
 //
-//    #pragma output noprotectmsdos
 //    Strip the MS-DOS protection header (recommended because ain't nobody got time for that)
+//    #pragma output noprotectmsdos
 //
-//    #pragma output noredir
 //    Do not insert the file redirection option while parsing the command line arguments (useless if “nostreams” is set)
+//    #pragma output noredir
 //
-//    #pragma output nogfxglobals
 //    No global variables for graphics (recommended because you'll be using NABULIB for graphics)
+//    #pragma output nogfxglobals
 //
 // **************************************************************************
 // #define BIN_TYPE BIN_HOMEBREW
@@ -118,8 +88,52 @@
 
 // **************************************************************************
 // 
+// CONFIGURE FONT or PATTERN TABLE
+// ===============================
+// 
+// If you will be using the VDP, you will need either a default font or pattern table.
+// Loading just a font is smaller than an entire pattern table, but both options are
+// available to you. For just a textmode, that doesn't use CP/M's stdio, then you can
+// use vdp_loadASCIIFont() and supply an existing pattern.h font, or your custom one.
+//
+// The diference between a FONT and a PATTERN is the size. A FONT is just the visible 
+// written 127 ASCII characters, starting at ASCII Decimal 37 (space bar). The PATTERN
+// is the entire pattern memory (256 characters) that include text and image patterns.
+// Generaly, if you're just using text, then load the vdp_loadASCIIFont() which can be used in
+// both G2 and Text mode. If you are using a pattern, check the VDP section for the 
+// load pattern functions.
+//
+//
+// USE ONE OF OUR FONTS
+// --------------------
+// 1) Include the "patterns.h" in your file #include "patterns.h"
+//
+// 2) Add one of these #define's into your main.c program.
+// #define FONT_AMIGA
+// #define FONT_SET1
+// #define FONT_STANDARD
+// #define FONT_LM80C
+//
+// 3) call vdp_loadASCIIFont(ASCII);
+//
+//
+// USE YOUR CUSTOM FONT
+// --------------------
+// If you with to use your own font, specify the font as:
+//
+//    const uint8_t[768] ASCII = {} 
+//
+// Once your font has been created, add it with vdp_loadASCIIFont(ASCII);
+//
+// *Note: You do not need to include a font if DISABLE_VDP is set and you're
+//        building a text-only cp/m program that uses stdio.
+// **************************************************************************
+
+
+// **************************************************************************
+// 
 // KEYBOARD INPUT TYPE
-// -------------------
+// ===================
 // 
 // This disables the NABULIB keyboard input commands (i.e. isKeyPressed(), getChar(), readLine()).
 // When you disable the NABULIB keyboard input commands, you will have to use the CPM
@@ -136,7 +150,7 @@
 // **************************************************************************
 // 
 // HCCA (SERIAL)
-// -------------
+// =============
 // 
 // If your program is not using the file store or HCCA for retronet, you can
 // disable the RX interrupt to save filesize.
@@ -150,7 +164,7 @@
 // **************************************************************************
 // 
 // VDP GRAPHICS
-// ------------
+// ============
 // 
 // You can disable the vdp functions if you're just using the cpm built-in
 // console stuff, like puts() or printf(), etc.
@@ -158,6 +172,18 @@
 // Add this #define above your #include in the main.c to disable the VDP commands
 // **************************************************************************
 // #define DISABLE_VDP
+
+
+// **************************************************************************
+//
+// DISABLE CURSOR
+// ==============
+//
+// You can disable the cursor by putting this line above the #include in your main.c
+// This can only disable the VDP NABULIB cursor, not the CPM cursor.
+// Meaning, it will disable the cursor for NABULIB key input commands, like getChar()
+// **************************************************************************
+// #define DISABLE_CURSOR
 
 
 // **************************************************************************
@@ -171,12 +197,12 @@
 #define CURSOR_CHAR '_'
 #endif
 
+
 // **************************************************************************
-// You can disable the cursor by putting this line above the #include in your main.c
-// This can only disable the VDP NABULIB cursor, not the CPM cursor.
-// Meaning, it will disable the cursor for NABULIB key input commands, like getChar()
+//
+//                READ BELOW FOR FUNCTION HELP BUT NO EDIT
+//
 // **************************************************************************
-// #define DISABLE_CURSOR
 
 #ifndef BIN_TYPE
   #error A BIN_TYPE has not been specified. Look at the NABU-LIB.h to configure your application.
@@ -193,7 +219,7 @@
 // 
 // These are special function register definitions where you can read and write
 // values to the ports. using these compiles to one line of assembly, OUT or IN,
-// which is very effecient. 
+// which generates effecient assembly.
 // 
 // *Note: For example, to send a value to PORTA
 // 
@@ -288,15 +314,6 @@ volatile uint8_t _randomSeed = 0;
   #warning Keyboard Interupt Disabled. If building for CPM, uses C STDIN stdio/conio functions for keyboard.
   #warning
 #endif
-
-// **************************************************************************
-// The original Interrupt Mask when initNABULib() was called. 
-// This is used when a function needs to briefly pause or change interrupts, it can put the interrupt back.
-// For example, this is used with writeByte() and all of it's parents (i.e. writeByteUInt16, etc..)
-// The writebyte() will disable interrupts and modify the interrupt mask so it can monitor the TX flag.
-// Once the byte has been sent, it will restore the interrupts as they were.
-// **************************************************************************
-uint8_t _ORIGINAL_INT_MASK = 0;
  
 
 // **************************************************************************
@@ -368,6 +385,7 @@ uint8_t _ORIGINAL_INT_MASK = 0;
   uint8_t        _vdpMode;
   bool           _autoScroll;
   bool           _vdpInterruptEnabled = false;
+  bool           _vdpSplitThirds;
 
   // used for the vdp_enableVDPReadyInt()
   volatile uint8_t vdpStatusRegVal = 0x00;
@@ -787,6 +805,10 @@ inline uint8_t ayRead(uint8_t reg);
   // 1 LPT
   __at (0xff13) uint8_t _LIST_DEVICE; 
 
+  // Current screen color
+  __at (0xff25) volatile uint8_t  _SCREEN_COLOR;
+
+
   void vt_clearToEndOfScreen();
 
   void vt_clearToEndOfLine();
@@ -996,7 +1018,7 @@ inline uint8_t ayRead(uint8_t reg);
   //   initNABULib();
   //
   //   // switch to the graphic mode 
-  //   vdp_initG2Mode(0, true, false, false);
+  //   vdp_initG2Mode(0, true, false, false, false);
   //
   //   // enable the VDP sync
   //   vdp_enableVDPReadyInt();
@@ -1104,9 +1126,12 @@ inline uint8_t ayRead(uint8_t reg);
   //               You will still provide the sprite size specified from 'spriteSize' but
   //               they will be double the size when put on the screen 
   // autoScroll:   Will text scroll when it reaches bottom of the screen
+  // splitThirds:  Splits the nametable and color generators into thirds in ram (0, 2048, 4096)
+  //               This must be TRUE if you want to use bitmap line drawing mode.
+  //               Otherwise, set this to FALSE because you don't need it
   // 
   // **************************************************************************
-  void vdp_initG2Mode(uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll);
+  void vdp_initG2Mode(uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, bool splitThirds);
 
   // **************************************************************************
   // Initializes the VDP in 64x48 Multicolor Mode. Not really useful if more than 4k Video ram is available
@@ -1130,8 +1155,11 @@ inline uint8_t ayRead(uint8_t reg);
   //               You will still provide the sprite size specified from 'spriteSize' but
   //               they will be double the size when put on the screen 
   //  autoScroll:  Scrolls textmode vertically when your text is at the bottom of the screen 
+  // splitThirds:  Splits the nametable and color generators into thirds in ram (0, 2048, 4096)
+  //               This must be TRUE if you want to use bitmap line drawing mode.
+  //               Otherwise, set this to FALSE because you don't need it
   // **************************************************************************
-  void vdp_init(uint8_t mode, uint8_t fgColor, uint8_t bgColor, bool big_sprites, bool magnify, bool autoScroll);
+  void vdp_init(uint8_t mode, uint8_t fgColor, uint8_t bgColor, bool big_sprites, bool magnify, bool autoScroll, bool splitThirds);
 
   // **************************************************************************
   // Clear all VRAM set to 0's
@@ -1238,6 +1266,8 @@ inline uint8_t ayRead(uint8_t reg);
   // - y
   // - color1 Color of pixel at (x,y). If NULL, plot a pixel with color2
   // - color2 Color of the pixels not set or color of pixel at (x,y) when color1 == NULL
+  //
+  // *NOTE: This requires SPLIT THIRDS to be specified in init_gtMode() 
   // **************************************************************************
   void vdp_plotHires(uint8_t x, uint8_t y, uint8_t color1, uint8_t color2);
 
@@ -1248,6 +1278,8 @@ inline uint8_t ayRead(uint8_t reg);
   // - x
   // - y
   // - color
+  //
+  // *NOTE: This requires SPLIT THIRDS to be specified in init_gtMode() 
   // **************************************************************************
   void vdp_plotColor(uint8_t x, uint8_t y, uint8_t color);
 
@@ -1440,36 +1472,6 @@ inline uint8_t ayRead(uint8_t reg);
   // Write a character at the specified location
   // **************************************************************************
   void vdp_writeCharAtLocation(uint8_t x, uint8_t y, uint8_t c);
-
-  // **************************************************************************
-  // Display the numeric value of the variable
-  // **************************************************************************
-  void vdp_writeUInt8(uint8_t v);
-
-  // **************************************************************************
-  // Display the numeric value of the variable
-  // **************************************************************************
-  void vdp_writeInt8(int8_t v);
-
-  // **************************************************************************
-  // Display the numer value of the variable
-  // **************************************************************************
-  void vdp_writeUInt16(uint16_t v);
-
-  // **************************************************************************
-  // Display the numer value of the variable
-  // </summary
-  void vdp_writeInt16(int16_t v);
-
-  // **************************************************************************
-  // Display the numer value of the variable
-  // **************************************************************************
-  void vdp_writeUInt32(uint32_t v);
-
-  // **************************************************************************
-  // Display the numer value of the variable
-  // **************************************************************************
-  void vdp_writeInt32(int32_t v);
 
   // **************************************************************************
   // Display the binary value of the variable

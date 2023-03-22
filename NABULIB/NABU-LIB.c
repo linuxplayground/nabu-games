@@ -76,26 +76,28 @@ void initNABULib() {
 
   __endasm;
 
+  uint8_t origIntMask;
+
   #if BIN_TYPE == BIN_HOMEBREW
 
     // A homebrew would not have existing interupts, so we start with a nice clean 0
-    _ORIGINAL_INT_MASK = 0;
+    origIntMask = 0;
   #elif BIN_TYPE == BIN_CPM
 
     // if cpm, we get the previous interrupt settings that the BIOS set because we only override 
     // what we want to use in NABULib. 
-    _ORIGINAL_INT_MASK = ayRead(IOPORTA);
+    origIntMask = ayRead(IOPORTA);
   #endif
 
   #ifndef DISABLE_HCCA_RX_INT
-    _ORIGINAL_INT_MASK |= INT_MASK_HCCARX;
+    origIntMask |= INT_MASK_HCCARX;
   #endif
 
   #ifndef DISABLE_KEYBOARD_INT
-    _ORIGINAL_INT_MASK |= INT_MASK_KEYBOARD;
+    origIntMask |= INT_MASK_KEYBOARD;
   #endif
 
-  ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+  ayWrite(IOPORTA, origIntMask);
 
   NABU_EnableInterrupts();
 
@@ -665,6 +667,8 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
     NABU_DisableInterrupts();
     
+    uint8_t origIntMask = ayRead(IOPORTA);
+
     ayWrite(IOPORTA, INT_MASK_HCCATX);
 
     IO_AYLATCH = IOPORTB;
@@ -672,7 +676,7 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
     IO_HCCA = c;
 
-    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+    ayWrite(IOPORTA, origIntMask);
 
     NABU_EnableInterrupts();
   }
@@ -788,9 +792,11 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
     __endasm;
 
-    _ORIGINAL_INT_MASK |= INT_MASK_VDP;
+    uint8_t origIntMask = ayRead(IOPORTA);
+    
+    origIntMask |= INT_MASK_VDP;
 
-    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+    ayWrite(IOPORTA, origIntMask);
 
     NABU_EnableInterrupts();
 
@@ -825,10 +831,12 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     // clear any existing interrupts status
     uint8_t tmp = IO_AYLATCH;
 
-    if (_ORIGINAL_INT_MASK & INT_MASK_VDP)
-      _ORIGINAL_INT_MASK ^= INT_MASK_VDP;
+    uint8_t origIntMask = ayRead(IOPORTA);
 
-    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+    if (origIntMask & INT_MASK_VDP)
+      origIntMask ^= INT_MASK_VDP;
+
+    ayWrite(IOPORTA, origIntMask);
 
     NABU_EnableInterrupts();
   }
@@ -847,9 +855,11 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
     __endasm;
 
-    _ORIGINAL_INT_MASK |= INT_MASK_VDP;
+    uint8_t origIntMask = ayRead(IOPORTA);
 
-    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+    origIntMask |= INT_MASK_VDP;
+
+    ayWrite(IOPORTA, origIntMask);
 
     NABU_EnableInterrupts();
 
@@ -868,17 +878,21 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     // clear any existing interrupts status
     uint8_t tmp = IO_AYLATCH;
 
-    if (_ORIGINAL_INT_MASK & INT_MASK_VDP)
-      _ORIGINAL_INT_MASK ^= INT_MASK_VDP;
+    uint8_t origIntMask = ayRead(IOPORTA);
 
-    ayWrite(IOPORTA, _ORIGINAL_INT_MASK);
+    if (origIntMask & INT_MASK_VDP)
+      origIntMask ^= INT_MASK_VDP;
+
+    ayWrite(IOPORTA, origIntMask);
 
     NABU_EnableInterrupts();
   }
 
-  void vdp_init(uint8_t mode, uint8_t fgColor, uint8_t bgColor, bool big_sprites, bool magnify, bool autoScroll) {
+  void vdp_init(uint8_t mode, uint8_t fgColor, uint8_t bgColor, bool big_sprites, bool magnify, bool autoScroll, bool splitThirds) {
 
     _vdpMode = mode;
+
+    _vdpSplitThirds = splitThirds;
 
     _vdpSpriteSizeSelected = big_sprites;
 
@@ -898,7 +912,11 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
         _vdpReg1Val = 0b11000000 | (big_sprites << 1) | magnify; 
         vdp_setRegister(1, _vdpReg1Val); 
 
-        vdp_setRegister(4, 0x03);
+        if (_vdpSplitThirds)
+          vdp_setRegister(4, 0x03);
+        else
+          vdp_setRegister(4, 0x00);
+        
         _vdpPatternGeneratorTableAddr = 0x00;
 
         fgColor = 0;
@@ -951,7 +969,10 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     vdp_setRegister(2, 0x06);
     _vdpPatternNameTableAddr = 0x1800;     
 
-    vdp_setRegister(3, 0xff); // <- ALL LIES! how is 0xff 0x2000? 
+    if (_vdpSplitThirds)
+      vdp_setRegister(3, 0xff);
+    else
+      vdp_setRegister(3, 0x9f);
     _vdpColorTableAddr = 0x2000;
 
     vdp_setRegister(5, 0x36);
@@ -990,17 +1011,17 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
   void vdp_initTextMode(uint8_t fgColor, uint8_t bgColor, bool autoScroll) {
 
-    vdp_init(VDP_MODE_TEXT, fgColor, bgColor , false, false, autoScroll);
+    vdp_init(VDP_MODE_TEXT, fgColor, bgColor , false, false, autoScroll, false);
   }
 
-  void vdp_initG2Mode(uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll) {
+  void vdp_initG2Mode(uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, bool splitThirds) {
 
-    vdp_init(VDP_MODE_G2, 0, bgColor, bigSprites, scaleSprites, autoScroll);
+    vdp_init(VDP_MODE_G2, 0, bgColor, bigSprites, scaleSprites, autoScroll, splitThirds);
   }
 
   void vdp_initMultiColorMode() {
 
-    vdp_init(VDP_MODE_MULTICOLOR, 0, 0, false, false, false);
+    vdp_init(VDP_MODE_MULTICOLOR, 0, 0, false, false, false, false);
   }
 
   void vdp_clearScreen() {
@@ -1125,23 +1146,26 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
       start++;
     } while (start != end);
 
-    vdp_setWriteAddress(_vdpPatternGeneratorTableAddr + 2048);
-    start = patternTable;
-    do {
+    if (_vdpSplitThirds) { 
 
-      IO_VDPDATA = *start;
+      vdp_setWriteAddress(_vdpPatternGeneratorTableAddr + 2048);
+      start = patternTable;
+      do {
 
-      start++;
-    } while (start != end);
+        IO_VDPDATA = *start;
 
-    vdp_setWriteAddress(_vdpPatternGeneratorTableAddr + 4096);
-    start = patternTable;
-    do {
+        start++;
+      } while (start != end);
 
-      IO_VDPDATA = *start;
+      vdp_setWriteAddress(_vdpPatternGeneratorTableAddr + 4096);
+      start = patternTable;
+      do {
 
-      start++;
-    } while (start != end);
+        IO_VDPDATA = *start;
+
+        start++;
+      } while (start != end);
+    }
   }
 
   void vdp_loadColorTable(uint8_t *colorTable, uint16_t len) {
@@ -1149,7 +1173,7 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     // datasheet 2-20 : screen is split into 3 and the color table therefore is repeated 3 times
     uint8_t *start = colorTable;
     uint8_t *end = colorTable + len;
-
+      
     vdp_setWriteAddress(_vdpColorTableAddr);
     do {
 
@@ -1158,23 +1182,26 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
       start++;
     } while (start != end);
 
-    vdp_setWriteAddress(_vdpColorTableAddr + 2048);
-    start = colorTable;
-    do {
+    if (_vdpSplitThirds) {
 
-      IO_VDPDATA = *start;
+      vdp_setWriteAddress(_vdpColorTableAddr + 2048);
+      start = colorTable;
+      do {
 
-      start++;
-    } while (start != end);
+        IO_VDPDATA = *start;
 
-    vdp_setWriteAddress(_vdpColorTableAddr + 4096);
-    start = colorTable;
-    do {
+        start++;
+      } while (start != end);
 
-      IO_VDPDATA = *start;
+      vdp_setWriteAddress(_vdpColorTableAddr + 4096);
+      start = colorTable;
+      do {
 
-      start++;
-    } while (start != end);
+        IO_VDPDATA = *start;
+
+        start++;
+      } while (start != end);
+    }
   }
 
   void vdp_colorizePattern(uint8_t patternId, uint8_t fg, uint8_t bg) {
@@ -1187,13 +1214,16 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     for (uint8_t i = 0; i < 8; i++)
       IO_VDPDATA = c;
 
-    vdp_setWriteAddress(_vdpColorTableAddr + 2048  + pt);
-    for (uint8_t i = 0; i < 8; i++)
-      IO_VDPDATA = c;
+    if (_vdpSplitThirds) {
 
-    vdp_setWriteAddress(_vdpColorTableAddr + 4096 + pt);
-    for (uint8_t i = 0; i < 8; i++)
-      IO_VDPDATA = c;
+      vdp_setWriteAddress(_vdpColorTableAddr + 2048  + pt);
+      for (uint8_t i = 0; i < 8; i++)
+        IO_VDPDATA = c;
+
+      vdp_setWriteAddress(_vdpColorTableAddr + 4096 + pt);
+      for (uint8_t i = 0; i < 8; i++)
+        IO_VDPDATA = c;
+    }
   }
 
   void vdp_plotHires(uint8_t x, uint8_t y, uint8_t color1, uint8_t color2) {
@@ -1507,6 +1537,28 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
     _vdp_textBuffer[y * _vdpCursorMaxXFull + x] = c;
   }
 
+  void vdp_refreshViewPort() {
+  
+    vdp_setWriteAddress(_vdpPatternNameTableAddr);
+
+    __asm
+        ld hl, __vdp_textBuffer;
+        ld b, 0;
+        ld c, 0xA0;
+        otir;
+        otir;
+        otir;
+    __endasm;
+
+    if (_vdpCursorMaxXFull == 40)
+      __asm
+        ld hl, __vdp_textBuffer + 768;
+        ld b, 192;
+        ld c, 0xA0;
+        otir;
+      __endasm;
+  }
+
   void vdp_scrollTextUp(uint8_t topRow, uint8_t bottomRow) {
 
     vdp_setWriteAddress(_vdpPatternNameTableAddr + (topRow * _vdpCursorMaxXFull));
@@ -1565,66 +1617,6 @@ void playNoteDelay(uint8_t channel, uint8_t note, uint16_t delayLength) {
 
       v++;
     } while (v != e);
-  }
-
-  void vdp_writeUInt32(uint32_t v) {
-
-    // 4294967295
-    uint8_t tb[11];
-
-    sprintf(tb, "%u", v);
-
-    vdp_print(tb);
-  }
-
-  void vdp_writeInt32(int32_t v) {
-
-    // -2147483648
-    uint8_t tb[12];
-
-    sprintf(tb, "%d", v);
-
-    vdp_print(tb);
-  }
-
-  void vdp_writeUInt16(uint16_t v) {
-
-    // 12,345
-    uint8_t tb[6];
-
-    sprintf(tb, "%u", v);
-    
-    vdp_print(tb);
-  }
-
-  void vdp_writeInt16(int16_t v) {
-
-    // -23,456
-    uint8_t tb[7];
-
-    sprintf(tb, "%d", v);
-    
-    vdp_print(tb);
-  }
-
-  void vdp_writeUInt8(uint8_t v) {
-
-    // 123
-    uint8_t tb[4];
-
-    sprintf(tb, "%u", v);
-
-    vdp_print(tb);
-  }
-  
-  void vdp_writeInt8(int8_t v) {
-
-    // -234
-    uint8_t tb[5];
-
-    sprintf(tb, "%d", v);
-
-    vdp_print(tb);
   }
 
   void vdp_writeUInt8ToBinary(uint8_t v) {
