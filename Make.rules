@@ -1,0 +1,22 @@
+
+CLEAN_DIRS=$(SUBDIRS:%=clean-%)
+ALL_DIRS=$(SUBDIRS:%=all-%)
+
+.PHONY: all clean release $(CLEAN_DIRS) $(ALL_DIRS)
+
+all:: $(ALL_DIRS)
+
+clean:: $(CLEAN_DIRS)
+
+world:: clean all
+
+$(ALL_DIRS):
+	$(MAKE) -C $(@:all-%=%) all
+
+$(CLEAN_DIRS):
+	$(MAKE) -C $(@:clean-%=%) clean
+
+ZCC = $(Z88DIR)/bin/zcc
+
+export PATH := $(Z88DIR)/bin/:$(PATH)
+export ZCCCFG := $(Z88DIR)/lib/config

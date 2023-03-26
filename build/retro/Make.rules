@@ -1,0 +1,17 @@
+include $(TOP)/Make.default
+
+TARGET_LIB_DIR=$(TOP)/../z80retro-lib
+
+CPPFLAGS+=-I$(TOP)/include		# something odd with patterns.h???
+CPPFLAGS+=-I$(TARGET_LIB_DIR)
+
+DISKDEF=z80-retro-8k-8m
+
+# For normal use on a plain Raspberry PI
+SD_DEV=/dev/sda1
+
+# This is used before burning an SD card image to make sure we are on the correct host!
+SD_HOSTNAME=raspberrypi
+
+-include $(TOP)/Make.local
+include $(TOP)/Make.rules

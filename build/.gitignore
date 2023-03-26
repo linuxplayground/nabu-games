@@ -1,4 +1,4 @@
-**/*
-!.gitignore
-!**/*.NABU
-!**/*.COM
+**/*.COM
+**/*.img
+**/*.dsk
+**/*.nabu

@@ -11,7 +11,6 @@ Control the snake to get it to eat the apples.  Each time you eat an apple, you 
 
 Do not crash into your own tail or the walls.  The goal is to stay alive as long as possible.  You get 1 point for each apple you eat.
 
-Keyboard controls: `,` to move left and `.` to move right.  You turn relative to the direction of movement.
 
 ## Tetris
 
@@ -25,10 +24,12 @@ x rotate clockwise
 . move right
 SPACE drop
 
-## Invaders
-
-WORK IN PROGRESS - IGNORE.
+Or use the Joystick
 
 ## NABU-LIB
 
-The games in this repo leverage NABU-LIB developed by DJSures. [https://github.com/DJSures/NABU-LIB](https://github.com/DJSures/NABU-LIB)
+The games in this repo depend on NABU-LIB developed by DJSures. [https://github.com/DJSures/NABU-LIB](https://github.com/DJSures/NABU-LIB)
+
+## z80retro-lib
+
+A port of NABU-LIB is available at [https://github.com/linuxplayground/z80retro-lib](https://github.com/linuxplayground/z80retro-lib) and is used in this project to cross-compile these games for the Z80_Retro.  For more inforamtion on the Z80_Retro board see: [https://github.com/Z80-Retro](https://github.com/Z80-Retro)

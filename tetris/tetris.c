@@ -2,9 +2,9 @@
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
 
-#include "../NABULIB/NABU-LIB.h"
-#include "../NABULIB/NabuTracker.h"
-#include "../include/patterns.h"
+#include "NABU-LIB.h"
+#include "NabuTracker.h"
+#include "patterns.h"
 #include "tetris-nt.h"
 #include "tetris.h"
 #include <arch/z80.h> // for z80_delay_ms()
