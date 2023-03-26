@@ -2,7 +2,8 @@ TOP=..
 
 SUBDIRS=\
 	nabu \
-	retro
+	retro \
+	framebuf
 
 all::
 
