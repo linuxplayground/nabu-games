@@ -64,19 +64,23 @@ void setupMap() {
     //plot the map graphics
     uint8_t col = 6;
     uint8_t line = 0;
-    vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
+    // vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
     for (int i = 0; i<504; i++) {
 
-        IO_VDPDATA = MAP[i];
+        // IO_VDPDATA = MAP[i];
+        vdp_setCharAtLocationBuf(col, line, MAP[i]);
 
         col = col + 1;
         if (col > 26) {
             col = 6;
             line = line + 1;
-            vdp_setCursor2(col,line);
-            vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
+            // vdp_setCursor2(col,line);
+            // vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
         }
     }
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort();
+
     //write the static words
     vdp_setCursor2(20,1);
     vdp_print("NEXT");
@@ -94,7 +98,7 @@ void displayTet(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
     for(uint8_t i = 0; i < 4; i ++) {
         for (uint8_t j = 0; j < 4; j ++) {
             if (TETRONIMOS[idx][i*4+j] != 0x20) {   //don't print spaces as they might delete existing stuff.
-                vdp_writeCharAtLocation(x+j, y+i, TETRONIMOS[idx][i*4+j]);
+                vdp_setCharAtLocationBuf(x+j, y+i, TETRONIMOS[idx][i*4+j]);
             }
         }
     }
@@ -105,7 +109,7 @@ void clearTet(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
     for(uint8_t i = 0; i < 4; i ++) {
         for (uint8_t j = 0; j < 4; j ++) {  // only delete when the block part is not a space.
             if (TETRONIMOS[idx][i*4+j] != 0x20) {
-                vdp_writeCharAtLocation(x+j, y+i, 0x20);
+                vdp_setCharAtLocationBuf(x+j, y+i, 0x20);
             }
         }
     }
@@ -116,7 +120,7 @@ bool isSpaceFree(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
     for(uint8_t i = 0; i < 4; i ++) {
         for (uint8_t j = 0; j < 4; j ++) {  // only check when block part is not a space.
             if (TETRONIMOS[idx][i*4+j] != 0x20) {
-                if (vdp_getCharAtLocationVRAM(x+j,y+i) != 0x20) {
+                if (vdp_getCharAtLocationBuf(x+j,y+i) != 0x20) {
                     return false;
                 }
             }
@@ -128,16 +132,16 @@ bool isSpaceFree(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
 
 void clearLinesAndDropDown(uint8_t line_num) {
     for( uint8_t j = 7; j < 19; j ++ ) {
-        vdp_writeCharAtLocation(j, line_num, 0x20);
+        vdp_setCharAtLocationBuf(j, line_num, 0x20);
     }
 
     for ( uint8_t i = line_num; i > 1; i-- ) {
         for( uint8_t j = 7; j < 19; j ++ ) {
-            vdp_writeCharAtLocation(j, i, vdp_getCharAtLocationVRAM(j,i-1));
+            vdp_setCharAtLocationBuf(j, i, vdp_getCharAtLocationBuf(j,i-1));
         }
     }
     for( uint8_t j = 7; j < 19; j ++ ) {
-        vdp_writeCharAtLocation(1,j,0x20);
+        vdp_setCharAtLocationBuf(1,j,0x20);
     }
 }
 
@@ -147,7 +151,7 @@ uint8_t checkCompletedLines(uint8_t *lines) {
     for( uint8_t i = 1; i<23; i++) {
         complete = true;
         for( uint8_t j = 7; j < 19; j ++ ) {
-            if (vdp_getCharAtLocationVRAM(j, i) == 0x20) {
+            if (vdp_getCharAtLocationBuf(j, i) == 0x20) {
                 complete = false;
                 break;
             }
@@ -223,7 +227,9 @@ void play() {
 
         while (true) {
             vdp_waitVDPReadyInt();
+            vdp_refreshViewPort();
             ticks ++;
+
             if (ticks % 7 == 0) {
                 nt_handleNote();
             }

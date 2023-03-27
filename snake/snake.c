@@ -116,13 +116,13 @@ void new_apple() {
     while(_taken) {
         uint8_t x = rand() % 32;
         uint8_t y = rand() % 24;
-        if (vdp_getCharAtLocationVRAM(x,y) == 0x00) {
+        if (vdp_getCharAtLocationBuf(x,y) == 0x00) {
             _taken = false;
             apple.x = x;
             apple.y = y;
         }      
     }
-    vdp_writeCharAtLocation(apple.x, apple.y, applechar);
+    vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
 
 
@@ -184,7 +184,7 @@ void game() {
             if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
                 break;
 
-            uint8_t _next = vdp_getCharAtLocationVRAM(head.x, head.y);
+            uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
             if(_next == APPLE) {
             //Apple check
                 segments = more_segments;
@@ -218,12 +218,13 @@ void game() {
                 segments --;
             }
             //draw the head
-            vdp_writeCharAtLocation(head.x, head.y, head.pattern);
+            vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
             //clear the tail
-            vdp_writeCharAtLocation(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
+            vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
             nt_handleNote();
         }
         vdp_waitVDPReadyInt();
+        vdp_refreshViewPort();
         ticks ++;
     }
 }

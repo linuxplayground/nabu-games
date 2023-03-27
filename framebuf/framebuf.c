@@ -22,9 +22,11 @@ void init() {
 
 void main(void) {
     init();
-    uint8_t character = 0x20;
+    uint8_t character = 'A';
     uint8_t ticks = 0;
-    uint8_t speed = 60;
+    uint8_t speed = 1;
+    uint8_t x = 0;
+    uint8_t y = 0;
     while(true) {
         // Use . (<) to slow down ,(>) to speed up.
         // speed starts at 0 and will be printed to console so you can see it when you exit.
@@ -32,20 +34,20 @@ void main(void) {
             break;
         }
         // not even making a function call.
-        if (ticks % speed == 0) {
-            for(uint16_t i = 0; i < 0x300; i ++) {
-                _vdp_textBuffer[i] = character;
+        // if (ticks % speed == 0) {
+            for(y = 0; y<24; y++) {
+                for(x=0; x<32; x++) {
+                    vdp_setCharAtLocationBuf(x, y, character);
+                }
             }
+
             character ++;
             if (character > 0x7e) {
                 character = 0x20;
             }
-            vdp_waitVDPReadyInt();
-            vdp_refreshViewPort();
-        }
+        // }
         vdp_waitVDPReadyInt();
+        vdp_refreshViewPort();
         ticks ++;
-        if(ticks > 240)
-            ticks = 0;
     }
 }
