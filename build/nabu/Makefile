@@ -5,7 +5,8 @@ TOP=../..
 SUBDIRS=\
 	tetris \
 	snake \
-	framebuf
+	framebuf \
+	cpmkey
 
 .PHONY: c.dsk all store
 
