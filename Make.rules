@@ -20,3 +20,5 @@ ZCC = $(Z88DIR)/bin/zcc
 
 export PATH := $(Z88DIR)/bin/:$(PATH)
 export ZCCCFG := $(Z88DIR)/lib/config
+
+GIT_TAG=$(shell git describe --exact-match --tags --abbrev=0)
