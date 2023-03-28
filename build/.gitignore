@@ -1,4 +1,8 @@
 **/*.COM
+**/*.com
 **/*.img
 **/*.dsk
 **/*.nabu
+**/*.NABU
+**/*.zip
+**/*.tgz

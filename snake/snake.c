@@ -62,7 +62,6 @@ void init() {
     nt_init(music);
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false, false);
-    vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     uint16_t _vdpColorTableAddr = 0x2000;
     uint16_t _vdpColorTableSize = 0x1800;
@@ -84,10 +83,9 @@ void init() {
 bool menu() {
     char _score_str[10];
     sprintf(_score_str, "SCORE: %03d", score);
-
     vdp_clearScreen();
     vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V2.1");
+    vdp_print("SNAKE - V2.2");
     vdp_setCursor2(16-(17/2),5);
     vdp_print("BY PRODUCTIONDAVE");
     vdp_setCursor2(16-(13/2),8);
@@ -116,13 +114,13 @@ void new_apple() {
     while(_taken) {
         uint8_t x = rand() % 32;
         uint8_t y = rand() % 24;
-        if (vdp_getCharAtLocationVRAM(x,y) == 0x00) {
+        if (vdp_getCharAtLocationBuf(x,y) == 0x00) {
             _taken = false;
             apple.x = x;
             apple.y = y;
         }      
     }
-    vdp_writeCharAtLocation(apple.x, apple.y, applechar);
+    vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
 
 
@@ -144,6 +142,7 @@ void setup_game() {
 }
 
 void game() {
+    vdp_enableVDPReadyInt();
     while(!quit) {
         //get input - Joystick move in 4 directions. (EASY MODE)
         if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
@@ -184,7 +183,7 @@ void game() {
             if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
                 break;
 
-            uint8_t _next = vdp_getCharAtLocationVRAM(head.x, head.y);
+            uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
             if(_next == APPLE) {
             //Apple check
                 segments = more_segments;
@@ -218,14 +217,31 @@ void game() {
                 segments --;
             }
             //draw the head
-            vdp_writeCharAtLocation(head.x, head.y, head.pattern);
+            vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
             //clear the tail
-            vdp_writeCharAtLocation(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
+            vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
             nt_handleNote();
         }
         vdp_waitVDPReadyInt();
+        vdp_refreshViewPort();
         ticks ++;
     }
+    // play crash sound
+    ayWrite(6,  0x0f);
+    ayWrite(7,  0b11000111);
+    ayWrite(8,  0x1f);
+    ayWrite(9,  0x1f);
+    ayWrite(10, 0x1f);
+    ayWrite(11, 0xa0);
+    ayWrite(12, 0x40);
+    ayWrite(13, 0x00);
+    // we have crashed - lets pause for a bit
+    uint16_t timer = 0;
+    while (timer < 180) { //3 seconds
+        vdp_waitVDPReadyInt();
+        timer ++;
+    }
+    vdp_disableVDPReadyInt();  //only use vdp interrupts during game play.
 }
 
 void main() {
@@ -233,15 +249,6 @@ void main() {
     while(menu()) {
         setup_game();
         game();
-        // play crash sound
-        ayWrite(6,  0x0f);
-        ayWrite(7,  0b11000111);
-        ayWrite(8,  0x1f);
-        ayWrite(9,  0x1f);
-        ayWrite(10, 0x1f);
-        ayWrite(11, 0xa0);
-        ayWrite(12, 0x40);
-        ayWrite(13, 0x00);
     };
     vdp_disableVDPReadyInt();
     #if BIN_TYPE == BIN_HOMEBREW
