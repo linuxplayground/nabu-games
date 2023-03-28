@@ -62,7 +62,6 @@ void init() {
     nt_init(music);
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false, false);
-    vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     uint16_t _vdpColorTableAddr = 0x2000;
     uint16_t _vdpColorTableSize = 0x1800;
@@ -84,10 +83,9 @@ void init() {
 bool menu() {
     char _score_str[10];
     sprintf(_score_str, "SCORE: %03d", score);
-
     vdp_clearScreen();
     vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V2.1");
+    vdp_print("SNAKE - V2.2");
     vdp_setCursor2(16-(17/2),5);
     vdp_print("BY PRODUCTIONDAVE");
     vdp_setCursor2(16-(13/2),8);
@@ -144,6 +142,7 @@ void setup_game() {
 }
 
 void game() {
+    vdp_enableVDPReadyInt();
     while(!quit) {
         //get input - Joystick move in 4 directions. (EASY MODE)
         if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
@@ -227,6 +226,22 @@ void game() {
         vdp_refreshViewPort();
         ticks ++;
     }
+    // play crash sound
+    ayWrite(6,  0x0f);
+    ayWrite(7,  0b11000111);
+    ayWrite(8,  0x1f);
+    ayWrite(9,  0x1f);
+    ayWrite(10, 0x1f);
+    ayWrite(11, 0xa0);
+    ayWrite(12, 0x40);
+    ayWrite(13, 0x00);
+    // we have crashed - lets pause for a bit
+    uint16_t timer = 0;
+    while (timer < 180) { //3 seconds
+        vdp_waitVDPReadyInt();
+        timer ++;
+    }
+    vdp_disableVDPReadyInt();  //only use vdp interrupts during game play.
 }
 
 void main() {
@@ -234,15 +249,6 @@ void main() {
     while(menu()) {
         setup_game();
         game();
-        // play crash sound
-        ayWrite(6,  0x0f);
-        ayWrite(7,  0b11000111);
-        ayWrite(8,  0x1f);
-        ayWrite(9,  0x1f);
-        ayWrite(10, 0x1f);
-        ayWrite(11, 0xa0);
-        ayWrite(12, 0x40);
-        ayWrite(13, 0x00);
     };
     vdp_disableVDPReadyInt();
     #if BIN_TYPE == BIN_HOMEBREW

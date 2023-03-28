@@ -130,6 +130,14 @@ bool isSpaceFree(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
     return true;
 }
 
+void clearPlayArea() {
+    for( uint8_t i = 1; i<23; i++) {
+        for( uint8_t j = 7; j < 19; j ++ ) {
+            vdp_setCharAtLocationBuf(j, i, 0x20);
+        }
+    }
+}
+
 void clearLinesAndDropDown(uint8_t line_num) {
     for( uint8_t j = 7; j < 19; j ++ ) {
         vdp_setCharAtLocationBuf(j, line_num, 0x20);
@@ -399,9 +407,21 @@ void play() {
             game_speed = 1;
     }
 
+    // Running is false - lets pause a bit so the player can see their screen.
+    nt_stopSounds();
+    uint16_t timer = 0;
+    while (timer < 180) { //3 seconds
+        vdp_waitVDPReadyInt();
+        timer ++;
+    }
+
 }
 
 bool menu() {
+    clearPlayArea();
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort();
+
     vdp_setCursor2(13-(9/2),3);
     vdp_print("PRESS ANY");
     vdp_setCursor2(13-(12/2),4);
@@ -425,7 +445,7 @@ bool menu() {
     vdp_setCursor2(13-(8/2),17);
     vdp_print("ESC QUIT");
     vdp_setCursor2(13-(4/2),19);
-    vdp_print("V2.1");
+    vdp_print("V2.2");
     vdp_setCursor2(13-(11/2),20);
     vdp_print("PRODUCTION-");
     vdp_setCursor2(13-(4/2),21);
@@ -451,7 +471,6 @@ void main() {
     while(menu()) {
         setupMap();
         play();
-        nt_stopSounds();
     }
     vdp_disableVDPReadyInt();
     #if BIN_TYPE == BIN_HOMEBREW
