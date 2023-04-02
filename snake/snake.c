@@ -32,6 +32,8 @@ void init() {
 }
 
 bool menu() {
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort();
     char _score_str[10];
     sprintf(_score_str, "SCORE: %03d", score);
     vdp_clearScreen();
