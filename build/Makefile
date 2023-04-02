@@ -3,7 +3,8 @@ TOP=..
 SUBDIRS=\
 	nabu \
 	retro \
-	framebuf
+	framebuf \
+	cpmkey
 
 all::
 

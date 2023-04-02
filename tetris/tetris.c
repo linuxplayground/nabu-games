@@ -4,10 +4,9 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "patterns.h"
+#include "nabu-games-patterns.h"
 #include "tetris-nt.h"
 #include "tetris.h"
-#include <arch/z80.h> // for z80_delay_ms()
 
 uint8_t tb[64];
 uint8_t tb8[4];

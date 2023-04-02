@@ -5,8 +5,8 @@
 #define DEBUG_VDP_INT
 
 #include <stdint.h>
-#include "../NABULIB/NABU-LIB.h"
-#include "../NABULIB/patterns.h"
+#include "NABU-LIB.h"
+#include "patterns.h"
 
 void init() {
 

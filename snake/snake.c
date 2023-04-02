@@ -3,7 +3,7 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "patterns.h"
+#include "nabu-games-patterns.h"
 #include "snake.h"
 
 
