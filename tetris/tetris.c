@@ -456,7 +456,7 @@ bool menu() {
     vdp_setCursor2(13-(4/2),20);
     vdp_print("DAVE");
     vdp_setCursor2(13-(4/2),21);
-    vdp_print("V2.2");
+    vdp_print("V3.0");
 
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {
