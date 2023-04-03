@@ -97,7 +97,7 @@ void setup_game() {
     score = 0;
     game_speed = 10;
     level = 1;
-    line(5,12,27,12);
+    // line(5,12,27,12);
     new_apple();
 }
 
