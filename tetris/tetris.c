@@ -4,10 +4,9 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "patterns.h"
+#include "nabu-games-patterns.h"
 #include "tetris-nt.h"
 #include "tetris.h"
-#include <arch/z80.h> // for z80_delay_ms()
 
 uint8_t tb[64];
 uint8_t tb8[4];
@@ -26,6 +25,10 @@ void initDisplay() {
     vdp_setWriteAddress(_vdpColorTableAddr);
     for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
         IO_VDPDATA = 0x41;                  // Dark blue on black
+        nop();                              // Chuck in some delay here for retro compatibility
+        nop();
+        nop();
+        nop();
     }
     //Make UPPER CASE ASCII in LIGHT GREEN
     for (uint8_t i = 65; i < 92; i++) {
@@ -62,33 +65,30 @@ void initDisplay() {
 
 void setupMap() {
     //plot the map graphics
-    uint8_t col = 6;
+    uint8_t col = 7;
     uint8_t line = 0;
-    // vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
-    for (int i = 0; i<504; i++) {
+    for (int i = 0; i<480; i++) {
 
         // IO_VDPDATA = MAP[i];
         vdp_setCharAtLocationBuf(col, line, MAP[i]);
 
         col = col + 1;
         if (col > 26) {
-            col = 6;
+            col = 7;
             line = line + 1;
-            // vdp_setCursor2(col,line);
-            // vdp_setWriteAddress(_vdpPatternNameTableAddr + (line * 32) + 6);
         }
     }
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
     //write the static words
-    vdp_setCursor2(20,1);
+    vdp_setCursor2(19,1);
     vdp_print("NEXT");
-    vdp_setCursor2(20,9);
+    vdp_setCursor2(19,9);
     vdp_print("LINES");
-    vdp_setCursor2(20,14);
+    vdp_setCursor2(19,14);
     vdp_print("SCORE");
-    vdp_setCursor2(20,19);
+    vdp_setCursor2(19,19);
     vdp_print("LEVEL");
 
 }
@@ -132,23 +132,23 @@ bool isSpaceFree(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
 
 void clearPlayArea() {
     for( uint8_t i = 1; i<23; i++) {
-        for( uint8_t j = 7; j < 19; j ++ ) {
+        for( uint8_t j = 8; j < 18; j ++ ) {
             vdp_setCharAtLocationBuf(j, i, 0x20);
         }
     }
 }
 
 void clearLinesAndDropDown(uint8_t line_num) {
-    for( uint8_t j = 7; j < 19; j ++ ) {
+    for( uint8_t j = 8; j < 18; j ++ ) {
         vdp_setCharAtLocationBuf(j, line_num, 0x20);
     }
 
     for ( uint8_t i = line_num; i > 1; i-- ) {
-        for( uint8_t j = 7; j < 19; j ++ ) {
+        for( uint8_t j = 8; j < 18; j ++ ) {
             vdp_setCharAtLocationBuf(j, i, vdp_getCharAtLocationBuf(j,i-1));
         }
     }
-    for( uint8_t j = 7; j < 19; j ++ ) {
+    for( uint8_t j = 8; j < 18; j ++ ) {
         vdp_setCharAtLocationBuf(1,j,0x20);
     }
 }
@@ -158,7 +158,7 @@ uint8_t checkCompletedLines(uint8_t *lines) {
     bool complete;
     for( uint8_t i = 1; i<23; i++) {
         complete = true;
-        for( uint8_t j = 7; j < 19; j ++ ) {
+        for( uint8_t j = 8; j < 18; j ++ ) {
             if (vdp_getCharAtLocationBuf(j, i) == 0x20) {
                 complete = false;
                 break;
@@ -206,6 +206,7 @@ void play() {
     uint16_t score = 0;
     uint8_t level = 1;
     uint8_t cleared_lines = 0;
+    uint8_t hard_drop_flag = 0;
 
     // Keep track of button and down so we can action down on release event
     // and not allow multiple rotate actions without a release between.
@@ -213,21 +214,21 @@ void play() {
     uint8_t dn_state = 0;
 
     sprintf(tb8, "%d", cleared_lines);
-    vdp_setCursor2(21,11);
+    vdp_setCursor2(20,11);
     vdp_print(tb8);
 
     sprintf(tb16, "%d", score);
-    vdp_setCursor2(21,16);
+    vdp_setCursor2(20,16);
     vdp_print(tb16);
 
     sprintf(tb8, "%d", level);
-    vdp_setCursor2(21,21);
+    vdp_setCursor2(20,21);
     vdp_print(tb8);
 
     while (running) {
         n = new_block();
         f = 0;              // first frame.
-        uint8_t x = 11;     // middle of play area
+        uint8_t x = 10;     // middle of play area
         uint8_t y = 1;      // top row of play area
 
         displayTet(21, 3, n, 0);
@@ -264,6 +265,8 @@ void play() {
                     playNoteDelay(2,24,15);
                     game_speed = 1;     // cant be 0 because of modulus of game ticks.
                     dn_state = 1;
+                    hard_drop_flag = 1; // add fallen lines to score during hard drop.
+                    score = score + 1;  // the guidelines say, number of lines passed + 1
                 }
 
                 if (getJoyStatus(0) & Joy_Button && btn_state == 0) {
@@ -296,7 +299,6 @@ void play() {
             if (isKeyPressed()) {
                 uint8_t key = getChar();
                 if (key == ',') {
-                    //playNoteDelay(2,36,3);
                     clearTet(x,y,t,f);
                     if(isSpaceFree(x-1,y,t,f)) {
                         x --;
@@ -305,7 +307,6 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == '.') {
-                    //playNoteDelay(2,36,3);
                     clearTet(x,y,t,f);
                     if(isSpaceFree(x+1,y,t,f)) {
                         x ++;
@@ -314,7 +315,6 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == 'z') {
-                    //playNoteDelay(2,38,3);
                     clearTet(x,y,t,f);
                     f --;
                     if (f < 0) {
@@ -330,7 +330,6 @@ void play() {
                         displayTet(x,y,t,f);
                     }
                 } else if (key == 'x') {
-                    //playNoteDelay(2,38,3);
                     clearTet(x,y,t,f);
                     f ++;
                     if (f > tets[t].count-1) {
@@ -349,6 +348,8 @@ void play() {
                 } else if (key == ' ') {
                     playNoteDelay(2,24,15);
                     game_speed = 1;     // cant be 0 because of modulus of game ticks.
+                    hard_drop_flag = 1; // guidelines state that score increases for each line passed in a hard drop
+                    score = score + 1;  // guidelines state that score += 1 when hard dropping.
                 } else if (key == 0x1b) {
                     running = false;
                     break;
@@ -356,12 +357,12 @@ void play() {
             }
 
             if (ticks % game_speed == 0) {  // game speed modifier
-                // play a note when falling
-                // if (game_speed > 1)
-                //     playNoteDelay(0,9,3);   // don't play if have done a drop.
                 clearTet(x,y,t,f);
                 if (isSpaceFree(x, y + 1, t, f)) {
                     y++;
+                    if(hard_drop_flag) {
+                        score = score + 1;
+                    }
                     displayTet(x, y, t, f);
                 } else {
                     displayTet(x, y, t, f);
@@ -384,30 +385,41 @@ void play() {
                     cleared_lines = 0;
                 }
             }
-            score = score + completed_lines;
-            if (completed_lines == 4) {
-                score = score + 10;
+            if (completed_lines == 1) {
+                score = score + 40;
+            } else if (completed_lines == 2) {
+                score = score + 100;
+            } else if (completed_lines == 3) {
+                score = score + 300;
+            } else if (completed_lines == 4) {
+                score = score + 1200;
             }
+
             sprintf(tb16, "%d", score);
-            vdp_setCursor2(21,16);
+            vdp_setCursor2(20,16);
             vdp_print(tb16);
 
             sprintf(tb8, "%d", cleared_lines);
-            vdp_setCursor2(21,11);
+            vdp_setCursor2(20,11);
             vdp_print(tb8);
 
             sprintf(tb8, "%d", level);
-            vdp_setCursor2(21,21);
+            vdp_setCursor2(20,21);
             vdp_print(tb8);
         }
         clearTet(21, 3, n, 0);  //clear the next block ready for the new one.
         t = n;
         game_speed = 30-(3*level);
+        hard_drop_flag = 0;          //always reset hard drop flag
         if (game_speed < 1)
             game_speed = 1;
     }
 
     // Running is false - lets pause a bit so the player can see their screen.
+    // Show the final score.
+    sprintf(tb16, "%d", score);
+    vdp_setCursor2(20,16);
+    vdp_print(tb16);
     nt_stopSounds();
     uint16_t timer = 0;
     while (timer < 180) { //3 seconds
@@ -423,33 +435,31 @@ bool menu() {
     vdp_refreshViewPort();
 
     vdp_setCursor2(13-(9/2),3);
-    vdp_print("PRESS ANY");
-    vdp_setCursor2(13-(12/2),4);
-    vdp_print("KEY TO START");
+    vdp_print("PRESS KEY");
+    vdp_setCursor2(13-(8/2),4);
+    vdp_print("TO START");
     vdp_setCursor2(13-(10/2),7);
     vdp_print(",(<)  LEFT");
     vdp_setCursor2(13-(10/2),8);
     vdp_print(".(>) RIGHT");
-    vdp_setCursor2(13-(12/2),9);
-    vdp_print("X & Z ROTATE");
+    vdp_setCursor2(13-(9/2),9);
+    vdp_print("X & Z ROT");
     vdp_setCursor2(13-(10/2),10);
     vdp_print("SPACE DROP");
     vdp_setCursor2(13-(8/2) ,12);
     vdp_print("JOYSTICK");
-    vdp_setCursor2(13-(12/2),13);
-    vdp_print("LEFT & RIGHT");
-    vdp_setCursor2(13-(10/2) ,14);
+    vdp_setCursor2(13-(10/2) ,13);
     vdp_print("BTN ROTATE");
-    vdp_setCursor2(13-(12/2) ,15);
-    vdp_print("DOWN TO DROP");
+    vdp_setCursor2(13-(9/2) ,14);
+    vdp_print("DOWN DROP");
     vdp_setCursor2(13-(8/2),17);
     vdp_print("ESC QUIT");
-    vdp_setCursor2(13-(4/2),19);
-    vdp_print("V2.2");
-    vdp_setCursor2(13-(11/2),20);
-    vdp_print("PRODUCTION-");
-    vdp_setCursor2(13-(4/2),21);
+    vdp_setCursor2(13-(10/2),19);
+    vdp_print("PRODUCTION");
+    vdp_setCursor2(13-(4/2),20);
     vdp_print("DAVE");
+    vdp_setCursor2(13-(4/2),21);
+    vdp_print("V3.0");
 
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {

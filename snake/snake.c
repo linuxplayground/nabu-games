@@ -3,7 +3,7 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "patterns.h"
+#include "nabu-games-patterns.h"
 
 // These patterns have been redefined in patterns.h
 #define HEAD_UP    0x01
@@ -67,7 +67,11 @@ void init() {
     uint16_t _vdpColorTableSize = 0x1800;
     vdp_setWriteAddress(_vdpColorTableAddr);
     for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
-        IO_VDPDATA = 0x41;                                  // Dark blue on black
+        IO_VDPDATA = 0x41;                  // Dark blue on black
+        nop();                              // Chuck in some delay here for retro compatibility
+        nop();
+        nop();
+        nop();
     }
 
     vdp_setBackDropColor(VDP_DARK_YELLOW);                  //Set border color
