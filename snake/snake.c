@@ -4,8 +4,57 @@
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
 #include "nabu-games-patterns.h"
-#include "snake.h"
 
+// These patterns have been redefined in patterns.h
+#define HEAD_UP    0x01
+#define HEAD_DOWN  0x02
+#define HEAD_LEFT  0x03
+#define HEAD_RIGHT 0x04
+#define APPLE      0x05
+
+// Globals
+int16_t buffer_head, buffer_tail;
+uint8_t score;
+uint8_t more_segments=2;  //Number of segments to add
+uint8_t segments;         //Variable contianing number of segments to add during current game tick
+uint8_t ticks;
+uint8_t game_speed;
+uint8_t applechar = APPLE;
+bool quit = false;
+int8_t circularBuffer[0x4000];
+
+//Music score
+uint16_t music[] = {
+    0, NT_NOTE_ON, 0, 20, 10,
+    1, NT_NOTE_OFF, 0,
+    2, NT_NOTE_ON, 0, 10, 10,
+    3, NT_NOTE_OFF, 0,
+    4, NT_NOTE_ON, 0, 20, 10,
+    5, NT_NOTE_OFF, 0,
+    6, NT_NOTE_ON, 0, 10, 10,
+    7, NT_NOTE_OFF, 0,
+    8, NT_NOTE_ON, 0, 15, 10,
+    9, NT_NOTE_OFF, 0,
+    10, NT_NOTE_ON, 0, 20, 10,
+    11, NT_NOTE_OFF, 0,
+    12, NT_NOTE_ON, 0, 10, 10,
+    13, NT_NOTE_OFF, 0,
+    14, NT_NOTE_ON, 0, 30, 10,
+    15, NT_NOTE_OFF, 0,
+    16, NT_LOOP
+};
+
+struct {
+    int8_t x;
+    int8_t y;
+    uint8_t dir;
+    uint8_t pattern;
+} head;
+
+struct {
+    int8_t x;
+    int8_t y;
+} apple;
 
 void init() {
     initNABULib();
@@ -36,24 +85,20 @@ void init() {
 }
 
 bool menu() {
-    vdp_waitVDPReadyInt();
-    vdp_refreshViewPort();
     char _score_str[10];
     sprintf(_score_str, "SCORE: %03d", score);
     vdp_clearScreen();
     vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V3.0");
+    vdp_print("SNAKE - V2.2");
     vdp_setCursor2(16-(17/2),5);
     vdp_print("BY PRODUCTIONDAVE");
     vdp_setCursor2(16-(13/2),8);
     vdp_print("JOYSTICK ONLY");
-    vdp_setCursor2(16-(12/2),9);
-    vdp_print("BTN TO PAUSE");
-    vdp_setCursor2(16-(17/2), 12);
+    vdp_setCursor2(16-(17/2), 11);
     vdp_print("BTN TO PLAY AGAIN");
-    vdp_setCursor2(16-(10/2),14);
+    vdp_setCursor2(16-(10/2),13);
     vdp_print(_score_str);
-    vdp_setCursor2(16-(11/2), 17);
+    vdp_setCursor2(16-(11/2), 16);
     vdp_print("ESC TO QUIT");
     while(true) {
         if (getJoyStatus(0) & Joy_Button)
@@ -82,12 +127,13 @@ void new_apple() {
     vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
 
+
 void setup_game() {
     vdp_fillScreen(0x00);
     initNABULIBAudio(); // reset to regular music mode
     // set up new game data
     head.x = 15;
-    head.y = 20;
+    head.y = 12;
     head.dir = HEAD_RIGHT;
     head.pattern = HEAD_RIGHT;
     buffer_head = -2;
@@ -96,39 +142,14 @@ void setup_game() {
     ticks = 0;
     score = 0;
     game_speed = 10;
-    level = 1;
-    // line(5,12,27,12);
     new_apple();
-}
-
-void line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
-
-    uint8_t dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    uint8_t dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    uint8_t err = (dx > dy ? dx : -dy) >> 1;
-
-    while (x0 != x1 || y0 != y1) {
-        vdp_setCharAtLocationBuf(x0, y0, '#');
-        uint8_t e2 = err;
-        if (e2 > -dx) {
-            err -= dy; 
-            x0 += sx; 
-        }
-        if (e2 < dy) {
-            err += dx; 
-            y0 += sy; 
-        }
-    }
 }
 
 void game() {
     vdp_enableVDPReadyInt();
     while(!quit) {
         //get input - Joystick move in 4 directions. (EASY MODE)
-        if(getJoyStatus(0) & Joy_Button) {
-            pause = !pause;
-        }
-        else if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
+        if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
             head.dir = HEAD_LEFT;
             head.pattern = HEAD_LEFT;
         }
@@ -145,7 +166,7 @@ void game() {
             head.pattern = HEAD_DOWN;
         }
 
-        if (ticks % game_speed == 0 && pause == false) {
+        if (ticks % game_speed == 0) {
             // move the head
             if (head.dir == HEAD_LEFT) {
                 head.x --;
