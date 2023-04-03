@@ -25,6 +25,10 @@ void initDisplay() {
     vdp_setWriteAddress(_vdpColorTableAddr);
     for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
         IO_VDPDATA = 0x41;                  // Dark blue on black
+        nop();                              // Chuck in some delay here for retro compatibility
+        nop();
+        nop();
+        nop();
     }
     //Make UPPER CASE ASCII in LIGHT GREEN
     for (uint8_t i = 65; i < 92; i++) {
