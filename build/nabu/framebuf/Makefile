@@ -4,7 +4,7 @@ TOP=../../..
 
 # case here has to match the directory name
 PROGS=framebuf.com
-NABUS=00001.nabu
+NABUS=000001.nabu
 
 all:: $(PROGS) $(NABUS)
 
@@ -15,7 +15,7 @@ SRC_DIR=$(TOP)/framebuf
 %.com: $(SRC_DIR)/framebuf.c
 	$(ZCC) $(CFLAGS) $(CPPFLAGS) -o $@ $^
 
-00001.nabu: $(SRC_DIR)/framebuf.c
+000001.nabu: $(SRC_DIR)/framebuf.c
 	$(ZCC) $(NABUCFLAGS) $(CPPFLAGS) -o $@ $^
 
 world:: clean all
