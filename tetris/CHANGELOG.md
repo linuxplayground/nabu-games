@@ -1,6 +1,6 @@
 # Tetris Change Log
 
-v2.3:
+v3.0:
 
 Based on https://tetris.wiki/Tetris_Guideline#Indispensable_rules
 
