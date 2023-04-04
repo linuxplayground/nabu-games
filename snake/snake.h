@@ -8,15 +8,14 @@
 // Globals
 int16_t buffer_head, buffer_tail;
 uint8_t score;
-uint8_t more_segments=2;  //Number of segments to add
+uint8_t more_segments=4;  //Number of segments to add
 uint8_t segments;         //Variable contianing number of segments to add during current game tick
 uint8_t ticks;
 uint8_t game_speed;
 uint8_t applechar = APPLE;
 uint8_t level;
-bool pause = false;
-bool quit = false;
-int8_t circularBuffer[0x4000];
+bool pause = true;
+bool crashed = false;
 
 //Music score
 uint16_t music[] = {
@@ -51,4 +50,28 @@ struct {
     int8_t y;
 } apple;
 
-void line(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+uint8_t level1[4 + 1] = {
+        4,      4,12,27,12
+};
+
+uint8_t level2[12 + 1] = {
+        12,     4,12,27,12,
+                8,3,8,12,
+                23,12,23,20
+};
+
+uint8_t level3[24 + 1] = {
+        24,     4,4,14,4,
+                17,4,27,4,
+                4,19,14,19,
+                17,19,27,19,
+                4,4,4,19,
+                27,4,27,20
+};
+
+
+
+uint8_t *levels[3] = {level1, level2, level3};
+
+#define BUFFSIZE 0x2000
+int8_t circularBuffer[BUFFSIZE] = { 0 };

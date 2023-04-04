@@ -4,6 +4,7 @@
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
 #include "nabu-games-patterns.h"
+#include "snake.h"
 
 // These patterns have been redefined in patterns.h
 #define HEAD_UP    0x01
@@ -12,49 +13,6 @@
 #define HEAD_RIGHT 0x04
 #define APPLE      0x05
 
-// Globals
-int16_t buffer_head, buffer_tail;
-uint8_t score;
-uint8_t more_segments=2;  //Number of segments to add
-uint8_t segments;         //Variable contianing number of segments to add during current game tick
-uint8_t ticks;
-uint8_t game_speed;
-uint8_t applechar = APPLE;
-bool quit = false;
-int8_t circularBuffer[0x4000];
-
-//Music score
-uint16_t music[] = {
-    0, NT_NOTE_ON, 0, 20, 10,
-    1, NT_NOTE_OFF, 0,
-    2, NT_NOTE_ON, 0, 10, 10,
-    3, NT_NOTE_OFF, 0,
-    4, NT_NOTE_ON, 0, 20, 10,
-    5, NT_NOTE_OFF, 0,
-    6, NT_NOTE_ON, 0, 10, 10,
-    7, NT_NOTE_OFF, 0,
-    8, NT_NOTE_ON, 0, 15, 10,
-    9, NT_NOTE_OFF, 0,
-    10, NT_NOTE_ON, 0, 20, 10,
-    11, NT_NOTE_OFF, 0,
-    12, NT_NOTE_ON, 0, 10, 10,
-    13, NT_NOTE_OFF, 0,
-    14, NT_NOTE_ON, 0, 30, 10,
-    15, NT_NOTE_OFF, 0,
-    16, NT_LOOP
-};
-
-struct {
-    int8_t x;
-    int8_t y;
-    uint8_t dir;
-    uint8_t pattern;
-} head;
-
-struct {
-    int8_t x;
-    int8_t y;
-} apple;
 
 void init() {
     initNABULib();
@@ -66,13 +24,7 @@ void init() {
     uint16_t _vdpColorTableAddr = 0x2000;
     uint16_t _vdpColorTableSize = 0x1800;
     vdp_setWriteAddress(_vdpColorTableAddr);
-    for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
-        IO_VDPDATA = 0x41;                  // Dark blue on black
-        nop();                              // Chuck in some delay here for retro compatibility
-        nop();
-        nop();
-        nop();
-    }
+    vdp_setPatternColor(0x41);
 
     vdp_setBackDropColor(VDP_DARK_YELLOW);                  //Set border color
 
@@ -89,7 +41,7 @@ bool menu() {
     sprintf(_score_str, "SCORE: %03d", score);
     vdp_clearScreen();
     vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V2.2");
+    vdp_print("SNAKE - V3.0");
     vdp_setCursor2(16-(17/2),5);
     vdp_print("BY PRODUCTIONDAVE");
     vdp_setCursor2(16-(13/2),8);
@@ -126,28 +78,113 @@ void new_apple() {
     }
     vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
+void line(int x0, int y0, int x1, int y1) {
 
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = (dx > dy ? dx : -dy) >> 1;
 
-void setup_game() {
-    vdp_fillScreen(0x00);
-    initNABULIBAudio(); // reset to regular music mode
-    // set up new game data
+    while (x0 != x1 || y0 != y1) {
+        vdp_setCharAtLocationBuf(x0, y0, 0x15);
+        int e2 = err;
+        if (e2 > -dx) {
+            err -= dy; 
+            x0 += sx; 
+        }
+        if (e2 < dy) {
+            err += dx; 
+            y0 += sy; 
+        }
+    }
+}
+
+void drawLevel(uint8_t *level, uint8_t len) {
+    uint8_t *start = level;
+    uint8_t *end = start + len;
+    uint8_t lines = 0;
+    do {
+        uint8_t a0 = *start;
+        start ++;
+        uint8_t b0 = *start;
+        start ++;
+        uint8_t a1 = *start;
+        start ++;
+        uint8_t b1 = *start;
+        start ++;
+        line(a0,b0,a1,b1);
+        lines ++;
+    } while (start != end);
+}
+
+void clearTextBuffer() {
+    for(uint16_t i=0; i<0x300; i++) {
+        _vdp_textBuffer[i] = 0x00;
+    }
+}
+
+void setup_level() {
+    clearTextBuffer();
+    //Reset snake length and circ buffer
     head.x = 15;
-    head.y = 12;
+    head.y = 20;
     head.dir = HEAD_RIGHT;
     head.pattern = HEAD_RIGHT;
     buffer_head = -2;
     buffer_tail = -2;
-    segments = more_segments;
     ticks = 0;
-    score = 0;
-    game_speed = 10;
+    segments = more_segments;
+    if (level > 0) {
+        uint8_t levelsize = *levels[level-1];
+        drawLevel(levels[level-1] + 1, levelsize);
+    }
     new_apple();
+    pause=true;
+}
+
+void setup_game() {
+    clearTextBuffer();
+    initNABULIBAudio(); // reset to regular music mode
+    score = 0;
+    level = 0;
+    game_speed = 10;
+    crashed = false;
+    setup_level();
+}
+
+void delay(uint8_t frames) {
+    uint8_t ticks = 0;
+    while(true) {
+        vdp_waitVDPReadyInt();
+        ticks ++;
+        if (ticks > frames)
+            break;
+    }
 }
 
 void game() {
-    vdp_enableVDPReadyInt();
-    while(!quit) {
+
+    while(!crashed) {
+        if (pause) {
+            nt_stopSounds();
+            bool flash = false;
+            delay(30);
+            while(true) {
+                if (getJoyStatus(0) & Joy_Button) {
+                    break;
+                }
+                delay(10);
+                flash = ~flash;
+                if(flash) {
+                    vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
+                } else {
+                    vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
+                }
+                vdp_waitVDPReadyInt();
+                vdp_refreshViewPort();
+            }
+            vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
+            pause = false;
+        }
         //get input - Joystick move in 4 directions. (EASY MODE)
         if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
             head.dir = HEAD_LEFT;
@@ -185,7 +222,7 @@ void game() {
 
             //Border Collisions first
             if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
-                break;
+                crashed = true;
 
             uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
             if(_next == APPLE) {
@@ -196,14 +233,20 @@ void game() {
                 if (score % 5 == 0 && game_speed > 5) {
                     game_speed --;
                 }
+                if (score % 10 == 0) {
+                    level ++;
+                    if (level > 3)
+                        level = 0;
+                    setup_level();
+                }
                 playNoteDelay(1, 43, 15);
                 playNoteDelay(2, 43, 15);
             } else if (_next != 0x00) {
-                break;
+                crashed = true;
             }
 
             // update buffer pointers
-            if (buffer_head < 0x4000) {
+            if (buffer_head < BUFFSIZE) {
                 buffer_head = buffer_head + 2;
             } else {
                 buffer_head = 0;
@@ -212,7 +255,7 @@ void game() {
             circularBuffer[buffer_head + 1] = head.y;
 
             if(segments == 0) {
-                if(buffer_tail < 0x4000) {
+                if(buffer_tail < BUFFSIZE) {
                     buffer_tail = buffer_tail + 2;
                 } else {
                     buffer_tail = 0;
@@ -226,10 +269,13 @@ void game() {
             vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
             nt_handleNote();
         }
-        vdp_waitVDPReadyInt();
-        vdp_refreshViewPort();
-        ticks ++;
+        if (!crashed) {
+            vdp_waitVDPReadyInt();
+            vdp_refreshViewPort();
+            ticks ++;
+        }
     }
+
     // play crash sound
     ayWrite(6,  0x0f);
     ayWrite(7,  0b11000111);
@@ -240,16 +286,16 @@ void game() {
     ayWrite(12, 0x40);
     ayWrite(13, 0x00);
     // we have crashed - lets pause for a bit
-    uint16_t timer = 0;
+    uint8_t timer = 0;
     while (timer < 180) { //3 seconds
         vdp_waitVDPReadyInt();
         timer ++;
     }
-    vdp_disableVDPReadyInt();  //only use vdp interrupts during game play.
 }
 
 void main() {
     init();
+    vdp_enableVDPReadyInt();
     while(menu()) {
         setup_game();
         game();
