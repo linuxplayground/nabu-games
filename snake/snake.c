@@ -4,6 +4,7 @@
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
 #include "nabu-games-patterns.h"
+#include "strings.h"
 #include "snake.h"
 
 // These patterns have been redefined in patterns.h
@@ -36,28 +37,27 @@ void init() {
     vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);       //Snake head
 }
 
+void centreText(char *text, uint8_t y) {
+    vdp_setCursor2(abs(15-(strlen(text)/2)),y);
+    vdp_print(text);
+}
+
 bool menu() {
+    vdp_clearScreen();
     char _score_str[10];
     sprintf(_score_str, "SCORE: %03d", score);
-    vdp_clearScreen();
-    vdp_setCursor2(16-(12/2),4);
-    vdp_print("SNAKE - V3.0");
-    vdp_setCursor2(16-(17/2),5);
-    vdp_print("BY PRODUCTIONDAVE");
-    vdp_setCursor2(16-(13/2),8);
-    vdp_print("JOYSTICK ONLY");
-    vdp_setCursor2(16-(17/2), 11);
-    vdp_print("BTN TO PLAY AGAIN");
-    vdp_setCursor2(16-(10/2),13);
-    vdp_print(_score_str);
-    vdp_setCursor2(16-(11/2), 16);
-    vdp_print("ESC TO QUIT");
+    centreText("SNAKE - V3.0",4);
+    centreText("BY PRODUCTIONDAVE",5);
+    centreText("JOYSTICK ONLY",8);
+    centreText("BTN TO PLAY AGAIN",11);
+    centreText(_score_str,13);
+    centreText("ESC TO QUIT",16);
     while(true) {
         if (getJoyStatus(0) & Joy_Button)
             return true;
         if (isKeyPressed()) {
             uint8_t _key = getChar();
-            if(_key == 0x1b)
+            if(_key == 0x1b)`
                 return false;
             if(_key == ' ')
                 return true;
@@ -78,22 +78,23 @@ void new_apple() {
     }
     vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
+
 void line(int x0, int y0, int x1, int y1) {
-
-    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    int err = (dx > dy ? dx : -dy) >> 1;
-
-    while (x0 != x1 || y0 != y1) {
-        vdp_setCharAtLocationBuf(x0, y0, 0x15);
-        int e2 = err;
-        if (e2 > -dx) {
-            err -= dy; 
-            x0 += sx; 
+    if (y0 < y1) {
+        for(uint8_t i = y0; i<=y1; i++) {
+            vdp_setCharAtLocationBuf(x0, i, 0x15);
         }
-        if (e2 < dy) {
-            err += dx; 
-            y0 += sy; 
+    } else if (y1 < y0) {
+        for(uint8_t i = y1; i<= y0; i++) {
+            vdp_setCharAtLocationBuf(x0, i, 0x15);
+        }
+    } else if (x0 < x1) {
+        for(uint8_t i = x0; i<=x1; i++) {
+            vdp_setCharAtLocationBuf(i, y0, 0x15);
+        }
+    } else {
+        for(uint8_t i = x1; i<=x0; i++) {
+            vdp_setCharAtLocationBuf(i, y0, 0x15);
         }
     }
 }
@@ -162,17 +163,16 @@ void delay(uint8_t frames) {
 }
 
 void game() {
-
+    uint8_t apples_eaten = 0;
     while(!crashed) {
         if (pause) {
             nt_stopSounds();
             bool flash = false;
-            delay(30);
             while(true) {
                 if (getJoyStatus(0) & Joy_Button) {
                     break;
                 }
-                delay(10);
+                delay(5);
                 flash = ~flash;
                 if(flash) {
                     vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
@@ -184,96 +184,109 @@ void game() {
             }
             vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
             pause = false;
-        }
-        //get input - Joystick move in 4 directions. (EASY MODE)
-        if(getJoyStatus(0) & Joy_Left && head.dir != HEAD_RIGHT) {
-            head.dir = HEAD_LEFT;
-            head.pattern = HEAD_LEFT;
-        }
-        else if(getJoyStatus(0) & Joy_Up && head.dir != HEAD_DOWN) {
-            head.dir = HEAD_UP;
-            head.pattern = HEAD_UP;
-        }
-        else if(getJoyStatus(0) & Joy_Right && head.dir != HEAD_LEFT) {
-            head.dir = HEAD_RIGHT;
-            head.pattern = HEAD_RIGHT;
-        }
-        else if(getJoyStatus(0) & Joy_Down && head.dir != HEAD_UP) {
-            head.dir = HEAD_DOWN;
-            head.pattern = HEAD_DOWN;
-        }
-
-        if (ticks % game_speed == 0) {
-            // move the head
-            if (head.dir == HEAD_LEFT) {
-                head.x --;
-            }
-            else if (head.dir == HEAD_UP) {
-                head.y --;
-            }
-            else if (head.dir == HEAD_RIGHT) {
-                head.x ++;
-            }
-            else if (head.dir == HEAD_DOWN) {
-                head.y ++;
-            }
-
-            //check for collisions
-
-            //Border Collisions first
-            if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
-                crashed = true;
-
-            uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
-            if(_next == APPLE) {
-            //Apple check
-                segments = more_segments;
-                new_apple();
-                score ++;
-                if (score % 5 == 0 && game_speed > 5) {
-                    game_speed --;
+        } else {
+            //get input - Joystick move in 4 directions. (EASY MODE)
+            //read the joystick status only one time. - Metastabliity - Thanks JW.
+            if(ticks % 3 == 0) {        // Trying to avoid player moving too quickly between moves.
+                uint8_t js = getJoyStatus(0);
+                if( (js & Joy_Left) && (head.dir != HEAD_RIGHT) ) {
+                    head.dir = HEAD_LEFT;
+                    head.pattern = HEAD_LEFT;
                 }
-                if (score % 10 == 0) {
-                    level ++;
-                    if (level > 3)
-                        level = 0;
-                    setup_level();
+                else if( (js & Joy_Up) && (head.dir != HEAD_DOWN) ) {
+                    head.dir = HEAD_UP;
+                    head.pattern = HEAD_UP;
                 }
-                playNoteDelay(1, 43, 15);
-                playNoteDelay(2, 43, 15);
-            } else if (_next != 0x00) {
-                crashed = true;
+                else if( (js & Joy_Right) && (head.dir != HEAD_LEFT) ) {
+                    head.dir = HEAD_RIGHT;
+                    head.pattern = HEAD_RIGHT;
+                }
+                else if( (js & Joy_Down) && (head.dir != HEAD_UP) ) {
+                    head.dir = HEAD_DOWN;
+                    head.pattern = HEAD_DOWN;
+                }
             }
 
-            // update buffer pointers
-            if (buffer_head < BUFFSIZE) {
-                buffer_head = buffer_head + 2;
-            } else {
-                buffer_head = 0;
-            }
-            circularBuffer[buffer_head] = head.x;
-            circularBuffer[buffer_head + 1] = head.y;
+            if (ticks % game_speed == 0) {
+                // move the head
+                if (head.dir == HEAD_LEFT) {
+                    head.x --;
+                }
+                else if (head.dir == HEAD_UP) {
+                    head.y --;
+                }
+                else if (head.dir == HEAD_RIGHT) {
+                    head.x ++;
+                }
+                else if (head.dir == HEAD_DOWN) {
+                    head.y ++;
+                }
 
-            if(segments == 0) {
-                if(buffer_tail < BUFFSIZE) {
-                    buffer_tail = buffer_tail + 2;
+                //check for collisions
+
+                //Border Collisions first
+                if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
+                    crashed = true;
+
+                uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
+                if(_next == APPLE) {
+                //Apple check
+                    segments = more_segments;
+                    new_apple();
+                    apples_eaten ++;
+                    score = score + abs(apples_eaten / 10) + 1;
+                    if (apples_eaten % 10 == 0 && apples_eaten > 20 && game_speed > 5) {
+                        game_speed --;
+                    }
+                    if (apples_eaten % 10 == 0) {
+                        level ++;
+                        playNoteDelay(1,65,15);
+                        playNoteDelay(2,65,15);
+                        delay(15);
+                        playNoteDelay(1, 71, 15);
+                        playNoteDelay(2, 71, 15);
+                        if (level > 4)
+                            level = 0;
+                        delay(45);
+                        setup_level();
+                    } else {
+                        playNoteDelay(1, 43, 15);
+                        playNoteDelay(2, 43, 15);
+                    }
+                } else if (_next != 0x00) {
+                    crashed = true;
+                }
+
+                // update buffer pointers
+                if (buffer_head < BUFFSIZE) {
+                    buffer_head = buffer_head + 2;
                 } else {
-                    buffer_tail = 0;
+                    buffer_head = 0;
                 }
-            } else {
-                segments --;
+                circularBuffer[buffer_head] = head.x;
+                circularBuffer[buffer_head + 1] = head.y;
+
+                if(segments == 0) {
+                    if(buffer_tail < BUFFSIZE) {
+                        buffer_tail = buffer_tail + 2;
+                    } else {
+                        buffer_tail = 0;
+                    }
+                } else {
+                    segments --;
+                }
+                //draw the head
+                vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
+                //clear the tail
+                vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
+                nt_handleNote();
             }
-            //draw the head
-            vdp_setCharAtLocationBuf(head.x, head.y, head.pattern);
-            //clear the tail
-            vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
-            nt_handleNote();
-        }
-        if (!crashed) {
-            vdp_waitVDPReadyInt();
-            vdp_refreshViewPort();
-            ticks ++;
-        }
+            if (!crashed) {
+                vdp_waitVDPReadyInt();
+                vdp_refreshViewPort();
+                ticks ++;
+            }
+        } //pause else
     }
 
     // play crash sound

@@ -66,12 +66,20 @@ uint8_t level3[24 + 1] = {
                 4,19,14,19,
                 17,19,27,19,
                 4,4,4,19,
-                27,4,27,20
+                27,4,27,19
+};
+
+uint8_t level4[24 + 1] = {
+        24,     3,4,24,4,
+                3,4,3,19,
+                6,19,27,19,
+                27,19,27,4,
+                21,4,21,16,
+                9,7,9,19,
 };
 
 
-
-uint8_t *levels[3] = {level1, level2, level3};
+uint8_t *levels[4] = {level1, level2, level3, level4};
 
 #define BUFFSIZE 0x2000
 int8_t circularBuffer[BUFFSIZE] = { 0 };

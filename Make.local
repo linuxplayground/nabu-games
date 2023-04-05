@@ -1,1 +1,6 @@
 STOREDIR = "/mnt/c/dev/nabu/Nabu Internet Adapter/Store/"
+
+SD_DEV=/dev/sdd1
+
+# This is used before burning an SD card image to make sure we are on the correct host!
+SD_HOSTNAME=minecraft01

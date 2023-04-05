@@ -24,13 +24,6 @@ void initDisplay() {
     uint16_t _vdpColorTableSize = 0x1800;
     vdp_setWriteAddress(_vdpColorTableAddr);
     vdp_setPatternColor(0x41);
-    // for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
-    //     IO_VDPDATA = 0x41;                  // Dark blue on black
-    //     nop();                              // Chuck in some delay here for retro compatibility
-    //     nop();
-    //     nop();
-    //     nop();
-    // }
     //Make UPPER CASE ASCII in LIGHT GREEN
     for (uint8_t i = 65; i < 92; i++) {
         vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
