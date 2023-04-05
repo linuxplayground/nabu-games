@@ -14,4 +14,4 @@
     2. Only one apple - players race to eat the apple.
     3. Player tails only grow by 2 segments when eating the apple.
 
-4. DONE: Pause / unpause with button press.
+4. Pause / unpause with button press.

@@ -5,11 +5,11 @@ These games are built to run on the Nabu Personal Computer.  Generally, the late
 * nabu.ca Internet Adapter
     * as standalone games selectable on the main menu under the Games section.
     * within Cloud CP/M on A drive user area 3.
-* nabunetwork.com Internet Adapter
+* nabunetwork.com Internet Adapter (Subject to change - the updated version of this internet adapter has not been released yet.)
     * Selectable in the drop down menus as standalone games
     * within Ishkur CP/M on A drive user area 3.
 
-## Manually loading the ame into Cloud CP/M
+## Manually loading the games into Cloud CP/M
 
 If you decide to compile the gmaes yourself, you can load them into the Internet Adapter by creating a C: disk image and using cpmtools to copy `snake.com` and `tetris.com` to the image.  In fact, there is a Makefile recipe that does this automatically and copies the c.dsk image into the Internet Adapter Store folder.  You will need to configure the path to your Store folder by creating a `Make.local` file in the root of this project.
 
