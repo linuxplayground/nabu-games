@@ -7,6 +7,10 @@ SUBDIRS=\
 	framebuf \
 	cpmkey
 
+RElEASEDIRS=\
+	tetris \
+	snake
+
 .PHONY: drive.img all
 
 # make 'all' be the default build target...
@@ -51,7 +55,7 @@ ls:: drive.img
 clean::
 	rm -f drive.img
 
-release: $(ALL_DIRS)
+release: $(RELEASEDIRS)
 	@if [ -e $(GIT_TAG) ]; then echo "\n\n** ERROR: you have not tagged this commit!\n\n"; exit 1; fi
-	tar -c -z -v -f  nabu-games-$(GIT_TAG).tgz */*.COM
-	zip  -r -v  nabu-games-$(GIT_TAG).zip */*.COM
+	tar -c -z -v -f  nabu-games-z80retro-$(GIT_TAG).tgz */*.COM
+	zip  -r -v  nabu-games-z80retro-$(GIT_TAG).zip */*.COM

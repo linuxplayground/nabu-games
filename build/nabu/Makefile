@@ -8,6 +8,10 @@ SUBDIRS=\
 	framebuf \
 	cpmkey
 
+RELEASEDIRS=\
+	tetris \
+	snake
+
 .PHONY: c.dsk all store
 
 # make 'all' be the default build target...
@@ -31,7 +35,7 @@ store: c.dsk
 clean::
 	rm -f c.dsk
 
-release: $(ALL_DIRS)
+release: $(RELEASEDIRS)
 	@if [ -e $(GIT_TAG) ]; then echo "\n\n** ERROR: you have not tagged this commit!\n\n"; exit 1; fi
 	tar -c -z -v -f  nabu-games-$(GIT_TAG).tgz */*.COM */*.NABU
 	zip  -r -v  nabu-games-$(GIT_TAG).zip */*.COM */*.NABU
