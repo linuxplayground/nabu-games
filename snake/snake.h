@@ -8,11 +8,18 @@
 // Globals
 int16_t buffer_head, buffer_tail;
 uint8_t score;
+char score_str[16];
+static uint8_t high_score;
+char high_score_str[16];
+
 uint8_t more_segments=4;  //Number of segments to add
 uint8_t segments;         //Variable contianing number of segments to add during current game tick
+
 uint8_t ticks;
 uint8_t game_speed;
+
 uint8_t applechar = APPLE;
+
 uint8_t level;
 bool pause = true;
 bool crashed = false;

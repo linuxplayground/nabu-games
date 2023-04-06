@@ -14,6 +14,31 @@
 #define HEAD_RIGHT 0x04
 #define APPLE      0x05
 
+void getHighScore() {
+    int hs;
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("snake.dat", "r");
+        if (fp) {
+            fscanf(fp, "%d", &hs);
+            fclose(fp);
+        } else {
+            hs = 0;
+        }
+    #else
+        hs = 0;
+    #endif
+    high_score = (uint8_t) hs;
+}
+
+void setHighScore(uint8_t hs) {
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("snake.dat", "w");
+        fprintf(fp, "%d", hs);
+        fclose(fp);
+    #else
+        (void)hs;
+    #endif
+}
 
 void init() {
     initNABULib();
@@ -27,37 +52,40 @@ void init() {
     vdp_setWriteAddress(_vdpColorTableAddr);
     vdp_setPatternColor(0x41);
 
-    vdp_setBackDropColor(VDP_DARK_YELLOW);                  //Set border color
+    vdp_setBackDropColor(VDP_DARK_YELLOW);                         //Set border color
 
     // overwrite special colours.
     vdp_colorizePattern(APPLE,      VDP_LIGHT_GREEN, VDP_BLACK);   //Apple
-    vdp_colorizePattern(HEAD_UP,    VDP_MAGENTA,     VDP_BLACK);       //Snake head
-    vdp_colorizePattern(HEAD_DOWN,  VDP_MAGENTA,     VDP_BLACK);       //Snake head
-    vdp_colorizePattern(HEAD_LEFT,  VDP_MAGENTA,     VDP_BLACK);       //Snake head
-    vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);       //Snake head
+    vdp_colorizePattern(HEAD_UP,    VDP_MAGENTA,     VDP_BLACK);   //Snake head
+    vdp_colorizePattern(HEAD_DOWN,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
+    vdp_colorizePattern(HEAD_LEFT,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
+    vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);   //Snake head
 }
 
-void centreText(char *text, uint8_t y) {
+void centerText(char *text, uint8_t y) {
     vdp_setCursor2(abs(15-(strlen(text)/2)),y);
     vdp_print(text);
 }
 
 bool menu() {
     vdp_clearScreen();
-    char _score_str[10];
-    sprintf(_score_str, "SCORE: %03d", score);
-    centreText("SNAKE - V3.0",4);
-    centreText("BY PRODUCTIONDAVE",5);
-    centreText("JOYSTICK ONLY",8);
-    centreText("BTN TO PLAY AGAIN",11);
-    centreText(_score_str,13);
-    centreText("ESC TO QUIT",16);
+
+    sprintf(score_str,      "SCORE:      %03d", score);
+    sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
+
+    centerText("SNAKE - V3.0",4);
+    centerText("BY PRODUCTIONDAVE",5);
+    centerText("JOYSTICK ONLY",8);
+    centerText("BTN TO PLAY AGAIN",11);
+    centerText(score_str,13);
+    centerText(high_score_str,14);
+    centerText("ESC TO QUIT",16);
     while(true) {
         if (getJoyStatus(0) & Joy_Button)
             return true;
         if (isKeyPressed()) {
             uint8_t _key = getChar();
-            if(_key == 0x1b)`
+            if(_key == 0x1b)
                 return false;
             if(_key == ' ')
                 return true;
@@ -235,6 +263,10 @@ void game() {
                     new_apple();
                     apples_eaten ++;
                     score = score + abs(apples_eaten / 10) + 1;
+                    if (high_score < score) {
+                        high_score = score;
+                    }
+                    
                     if (apples_eaten % 10 == 0 && apples_eaten > 20 && game_speed > 5) {
                         game_speed --;
                     }
@@ -298,7 +330,8 @@ void game() {
     ayWrite(11, 0xa0);
     ayWrite(12, 0x40);
     ayWrite(13, 0x00);
-    // we have crashed - lets pause for a bit
+    // we have crashed - lets save the high score and then pause for a bit
+    setHighScore(high_score);
     uint8_t timer = 0;
     while (timer < 180) { //3 seconds
         vdp_waitVDPReadyInt();
@@ -309,6 +342,7 @@ void game() {
 void main() {
     init();
     vdp_enableVDPReadyInt();
+    getHighScore();
     while(menu()) {
         setup_game();
         game();
