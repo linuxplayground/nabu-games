@@ -196,10 +196,10 @@ uint16_t getHighScore() {
         FILE * fp = fopen("tetris.dat", "r");
         if (fp) {
             fscanf(fp, "%d", &hs);
-            fclose(fp);
         } else {
             hs = 0;
         }
+        fclose(fp);
     #else
         hs = 0;
     #endif

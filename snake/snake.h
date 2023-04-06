@@ -9,8 +9,9 @@
 int16_t buffer_head, buffer_tail;
 uint8_t score;
 char score_str[16];
-static uint8_t high_score;
+uint8_t high_score;
 char high_score_str[16];
+uint8_t saved_high_score;
 
 uint8_t more_segments=4;  //Number of segments to add
 uint8_t segments;         //Variable contianing number of segments to add during current game tick
@@ -88,5 +89,5 @@ uint8_t level4[24 + 1] = {
 
 uint8_t *levels[4] = {level1, level2, level3, level4};
 
-#define BUFFSIZE 0x2000
+#define BUFFSIZE 0x1000
 int8_t circularBuffer[BUFFSIZE] = { 0 };

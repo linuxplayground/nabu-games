@@ -20,20 +20,30 @@ void getHighScore() {
         FILE * fp = fopen("snake.dat", "r");
         if (fp) {
             fscanf(fp, "%d", &hs);
-            fclose(fp);
         } else {
             hs = 0;
         }
+        fclose(fp);
     #else
         hs = 0;
     #endif
     high_score = (uint8_t) hs;
+    saved_high_score = high_score;
 }
 
 void setHighScore(uint8_t hs) {
     #if BIN_TYPE == BIN_CPM
-        FILE * fp = fopen("snake.dat", "w");
-        fprintf(fp, "%d", hs);
+        // printf("DEBUG: opening snake.dat for writing...\n");
+        FILE * fp;
+        fp = fopen("snake.dat", "w");
+        if (fp) {
+            // printf("DEBUG: file opened ...\n");
+            fprintf(fp, "%d", (uint16_t)hs);
+            // printf("DEBUG: writing high score [%d] to file...\n", hs);
+        } else //{
+            // printf("ERROR: could not open snake.dat for writing ...\n");
+        // }
+        // printf("DEBUG: closing snake.dat...\n");
         fclose(fp);
     #else
         (void)hs;
@@ -320,7 +330,9 @@ void game() {
             }
         } //pause else
     }
-
+    if (saved_high_score < high_score) {
+        setHighScore(high_score);
+    }
     // play crash sound
     ayWrite(6,  0x0f);
     ayWrite(7,  0b11000111);
@@ -330,8 +342,7 @@ void game() {
     ayWrite(11, 0xa0);
     ayWrite(12, 0x40);
     ayWrite(13, 0x00);
-    // we have crashed - lets save the high score and then pause for a bit
-    setHighScore(high_score);
+    
     uint8_t timer = 0;
     while (timer < 180) { //3 seconds
         vdp_waitVDPReadyInt();
