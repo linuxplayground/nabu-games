@@ -225,7 +225,7 @@ void play() {
     uint16_t game_speed = 30;
     uint8_t lines[4];
     uint16_t score = 0;
-    uint16_t high_score = getHighScore();
+    
     uint8_t level = 1;
     uint8_t cleared_lines = 0;
     uint8_t hard_drop_flag = 0;
@@ -518,6 +518,7 @@ bool menu() {
 void main() {
     initDisplay();
     setupMap();
+    high_score = getHighScore();
     while(menu()) {
         setupMap();
         play();
