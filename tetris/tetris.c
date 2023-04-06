@@ -20,9 +20,6 @@ void initDisplay() {
     vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
-    uint16_t _vdpColorTableAddr = 0x2000;
-    uint16_t _vdpColorTableSize = 0x1800;
-    vdp_setWriteAddress(_vdpColorTableAddr);
     vdp_setPatternColor(0x41);
     //Make UPPER CASE ASCII in LIGHT GREEN
     for (uint8_t i = 65; i < 92; i++) {
@@ -86,6 +83,9 @@ void setupMap() {
     vdp_print("LINES");
     vdp_setCursor2(19,20);
     vdp_print("LEVEL");
+    sprintf(tb16, "%d", high_score);
+    vdp_setCursor2(20,14);
+    vdp_print(tb16);
 }
 
 void displayTet(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
@@ -517,8 +517,8 @@ bool menu() {
 
 void main() {
     initDisplay();
-    setupMap();
     high_score = getHighScore();
+    setupMap();
     while(menu()) {
         setupMap();
         play();
