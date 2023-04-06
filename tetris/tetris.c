@@ -20,16 +20,7 @@ void initDisplay() {
     vdp_enableVDPReadyInt();
     vdp_loadPatternTable(FAT,0x330);
     //Load same colour into every colour table cell.
-    uint16_t _vdpColorTableAddr = 0x2000;
-    uint16_t _vdpColorTableSize = 0x1800;
-    vdp_setWriteAddress(_vdpColorTableAddr);
-    for (uint16_t i = 0; i<_vdpColorTableSize; i++) {
-        IO_VDPDATA = 0x41;                  // Dark blue on black
-        nop();                              // Chuck in some delay here for retro compatibility
-        nop();
-        nop();
-        nop();
-    }
+    vdp_setPatternColor(0x41);
     //Make UPPER CASE ASCII in LIGHT GREEN
     for (uint8_t i = 65; i < 92; i++) {
         vdp_colorizePattern(i,VDP_LIGHT_GREEN, VDP_BLACK);
@@ -84,13 +75,17 @@ void setupMap() {
     //write the static words
     vdp_setCursor2(19,1);
     vdp_print("NEXT");
-    vdp_setCursor2(19,9);
-    vdp_print("LINES");
-    vdp_setCursor2(19,14);
+    vdp_setCursor2(19,8);
     vdp_print("SCORE");
-    vdp_setCursor2(19,19);
+    vdp_setCursor2(19,12);
+    vdp_print("H.SCORE");
+    vdp_setCursor2(19,16);
+    vdp_print("LINES");
+    vdp_setCursor2(19,20);
     vdp_print("LEVEL");
-
+    sprintf(tb16, "%d", high_score);
+    vdp_setCursor2(20,14);
+    vdp_print(tb16);
 }
 
 void displayTet(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
@@ -195,6 +190,32 @@ int new_block() {
     return t;
 }
 
+uint16_t getHighScore() {
+    uint16_t hs;
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("tetris.dat", "r");
+        if (fp) {
+            fscanf(fp, "%d", &hs);
+            fclose(fp);
+        } else {
+            hs = 0;
+        }
+    #else
+        hs = 0;
+    #endif
+    return hs;
+}
+
+void setHighScore(uint16_t hs) {
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("tetris.dat", "w");
+        fprintf(fp, "%d", hs);
+        fclose(fp);
+    #else
+        (void)hs;
+    #endif
+}
+
 void play() {
     uint8_t t = new_block();
     uint8_t n;
@@ -204,6 +225,7 @@ void play() {
     uint16_t game_speed = 30;
     uint8_t lines[4];
     uint16_t score = 0;
+    
     uint8_t level = 1;
     uint8_t cleared_lines = 0;
     uint8_t hard_drop_flag = 0;
@@ -214,11 +236,15 @@ void play() {
     uint8_t dn_state = 0;
 
     sprintf(tb8, "%d", cleared_lines);
-    vdp_setCursor2(20,11);
+    vdp_setCursor2(20,18);
     vdp_print(tb8);
 
     sprintf(tb16, "%d", score);
-    vdp_setCursor2(20,16);
+    vdp_setCursor2(20,10);
+    vdp_print(tb16);
+
+    sprintf(tb16, "%d", high_score);
+    vdp_setCursor2(20,14);
     vdp_print(tb16);
 
     sprintf(tb8, "%d", level);
@@ -395,12 +421,20 @@ void play() {
                 score = score + 1200;
             }
 
+            if(high_score < score) {
+                high_score = score;
+            }
+
             sprintf(tb16, "%d", score);
-            vdp_setCursor2(20,16);
+            vdp_setCursor2(20,10);
+            vdp_print(tb16);
+
+            sprintf(tb16, "%d", high_score);
+            vdp_setCursor2(20,14);
             vdp_print(tb16);
 
             sprintf(tb8, "%d", cleared_lines);
-            vdp_setCursor2(20,11);
+            vdp_setCursor2(20,18);
             vdp_print(tb8);
 
             sprintf(tb8, "%d", level);
@@ -417,8 +451,14 @@ void play() {
 
     // Running is false - lets pause a bit so the player can see their screen.
     // Show the final score.
+    if(high_score < score) {
+        high_score = score;
+    }
     sprintf(tb16, "%d", score);
-    vdp_setCursor2(20,16);
+    vdp_setCursor2(20,10);
+    vdp_print(tb16);
+    sprintf(tb16, "%d", high_score);
+    vdp_setCursor2(20,14);
     vdp_print(tb16);
     nt_stopSounds();
     uint16_t timer = 0;
@@ -426,7 +466,7 @@ void play() {
         vdp_waitVDPReadyInt();
         timer ++;
     }
-
+    setHighScore(high_score);
 }
 
 bool menu() {
@@ -459,7 +499,7 @@ bool menu() {
     vdp_setCursor2(13-(4/2),20);
     vdp_print("DAVE");
     vdp_setCursor2(13-(4/2),21);
-    vdp_print("V3.0");
+    vdp_print("V3.1");
 
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {
@@ -477,6 +517,7 @@ bool menu() {
 
 void main() {
     initDisplay();
+    high_score = getHighScore();
     setupMap();
     while(menu()) {
         setupMap();
