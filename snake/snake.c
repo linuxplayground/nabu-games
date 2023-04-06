@@ -73,7 +73,7 @@ bool menu() {
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.0",4);
+    centerText("SNAKE - V3.1",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("JOYSTICK ONLY",8);
     centerText("BTN TO PLAY AGAIN",11);
