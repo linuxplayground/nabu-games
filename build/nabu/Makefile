@@ -4,9 +4,7 @@ TOP=../..
 # Name each subdir to build before making the filesystem
 SUBDIRS=\
 	tetris \
-	snake \
-	framebuf \
-	cpmkey
+	snake
 
 .PHONY: c.dsk all store
 

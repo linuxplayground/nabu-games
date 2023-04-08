@@ -33,18 +33,10 @@ void setHighScore(uint16_t hs) {
         fp = fopen("snake.dat", "w");
         fprintf(fp, "%d", hs);
         fclose(fp);
-        printf("High score written to disk was: %d\n", hs);
+        // printf("High score written to disk was: %d\n", hs);
     #else
         (void)hs;
     #endif
-}
-
-//Set all values in the color table to color.
-void vdp_setPatternColor(uint8_t color) {
-    vdp_setWriteAddress(_vdpColorTableAddr);
-    for (uint16_t i = 0; i < 0x1800; i++) {
-        IO_VDPDATA = color;
-    }
 }
 
 /* Write some text on the screen centered and at y location.*/
@@ -85,7 +77,7 @@ bool menu() {
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.2",4);
+    centerText("SNAKE - V3.3",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("JOYSTICK ONLY",8);
     centerText("BTN TO PLAY AGAIN",11);
@@ -332,22 +324,26 @@ void game() {
         } //end if not paused
     } //end while not crashed
 
+    /* Testing with playNoteDelay instead of direct IO access.*/
+    // playNoteDelay(1, 0, 15);
+    // playNoteDelay(2, 0, 15);
+
+    /* play crash sound - using NABU-LIB */
+    ayWrite(6,  0x0f); //Noise Period
+    ayWrite(7,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
+    ayWrite(8,  0x10); //amplitude controlled by envelope
+    ayWrite(9,  0x10); //amplitude controlled by envelope
+    ayWrite(10, 0x10); //amplitude controlled by envelope
+    ayWrite(11, 0xa0); //Envelope period fine
+    ayWrite(12, 0x40); //Envelope period course
+    ayWrite(13, 0x00); //Envelope shape
+
+
     /* We have crashed - update and save high score */
     if (high_score < score ) {
         high_score = score;
         setHighScore(high_score);
     }
-
-    // play crash sound
-    ayWrite(6,  0x0f);
-    ayWrite(7,  0b11000111);
-    ayWrite(8,  0x1f);
-    ayWrite(9,  0x1f);
-    ayWrite(10, 0x1f);
-    ayWrite(11, 0xa0);
-    ayWrite(12, 0x40);
-    ayWrite(13, 0x00);
-
     /* NOTE XXX
     * If I try to save the high score here (after playing the crash sound) The game crashes.
     * It does not crash when I try to save the high score immediately before these
