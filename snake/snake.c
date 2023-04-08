@@ -1,23 +1,20 @@
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
+#define DEBUG_VDP_INT
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
 #include "nabu-games-patterns.h"
-#include "strings.h"
+#include <strings.h>
 #include "snake.h"
 
-// These patterns have been redefined in patterns.h
-#define HEAD_UP    0x01
-#define HEAD_DOWN  0x02
-#define HEAD_LEFT  0x03
-#define HEAD_RIGHT 0x04
-#define APPLE      0x05
+FILE * fp;
 
-void getHighScore() {
+/* Fetch the high score from disk*/
+uint16_t getHighScore() {
     int hs;
     #if BIN_TYPE == BIN_CPM
-        FILE * fp = fopen("snake.dat", "r");
+        fp = fopen("snake.dat", "r");
         if (fp) {
             fscanf(fp, "%d", &hs);
         } else {
@@ -27,33 +24,39 @@ void getHighScore() {
     #else
         hs = 0;
     #endif
-    high_score = (uint8_t) hs;
-    saved_high_score = high_score;
+    return hs;
 }
 
-void setHighScore(uint8_t hs) {
+/* Write the high score to disk*/
+void setHighScore(uint16_t hs) {
     #if BIN_TYPE == BIN_CPM
-        // printf("DEBUG: opening snake.dat for writing...\n");
-        FILE * fp;
         fp = fopen("snake.dat", "w");
-        if (fp) {
-            // printf("DEBUG: file opened ...\n");
-            fprintf(fp, "%d", (uint16_t)hs);
-            // printf("DEBUG: writing high score [%d] to file...\n", hs);
-        } else //{
-            // printf("ERROR: could not open snake.dat for writing ...\n");
-        // }
-        // printf("DEBUG: closing snake.dat...\n");
+        fprintf(fp, "%d", hs);
         fclose(fp);
+        printf("High score written to disk was: %d\n", hs);
     #else
         (void)hs;
     #endif
 }
 
+//Set all values in the color table to color.
+void vdp_setPatternColor(uint8_t color) {
+    vdp_setWriteAddress(_vdpColorTableAddr);
+    for (uint16_t i = 0; i < 0x1800; i++) {
+        IO_VDPDATA = color;
+    }
+}
+
+/* Write some text on the screen centered and at y location.*/
+void centerText(char *text, uint8_t y) {
+    vdp_setCursor2(abs(15-(strlen(text)/2)),y);
+    vdp_waitVDPReadyInt();
+    vdp_print(text);
+}
+
+/* Set up the graphics, audio and vdp interrupts.*/
 void init() {
     initNABULib();
-    initNABULIBAudio();
-    nt_init(music);
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false, false);
     vdp_loadPatternTable(FAT,0x330);
@@ -61,7 +64,6 @@ void init() {
     uint16_t _vdpColorTableSize = 0x1800;
     vdp_setWriteAddress(_vdpColorTableAddr);
     vdp_setPatternColor(0x41);
-
     vdp_setBackDropColor(VDP_DARK_YELLOW);                         //Set border color
 
     // overwrite special colours.
@@ -70,20 +72,20 @@ void init() {
     vdp_colorizePattern(HEAD_DOWN,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
     vdp_colorizePattern(HEAD_LEFT,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
     vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);   //Snake head
+
+    initNABULIBAudio();
+    nt_init(music);
+    vdp_enableVDPReadyInt();
 }
 
-void centerText(char *text, uint8_t y) {
-    vdp_setCursor2(abs(15-(strlen(text)/2)),y);
-    vdp_print(text);
-}
-
+/* Display the menu and then wait for the user to either exit (false) or continue (true)*/
 bool menu() {
     vdp_clearScreen();
 
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.1",4);
+    centerText("SNAKE - V3.2",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("JOYSTICK ONLY",8);
     centerText("BTN TO PLAY AGAIN",11);
@@ -103,13 +105,14 @@ bool menu() {
     }
 }
 
+/* Locate a new apple on the screen without it overlapping anything already there.*/
 void new_apple() {
-    bool _taken = true;
-    while(_taken) {
+    bool taken = true;
+    while(taken) {
         uint8_t x = rand() % 32;
         uint8_t y = rand() % 24;
         if (vdp_getCharAtLocationBuf(x,y) == 0x00) {
-            _taken = false;
+            taken = false;
             apple.x = x;
             apple.y = y;
         }      
@@ -117,6 +120,7 @@ void new_apple() {
     vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
 
+/* Draw a line between two points - only works for horizontal and vertical lines*/
 void line(int x0, int y0, int x1, int y1) {
     if (y0 < y1) {
         for(uint8_t i = y0; i<=y1; i++) {
@@ -137,6 +141,7 @@ void line(int x0, int y0, int x1, int y1) {
     }
 }
 
+/* Draw the level onto the screen.*/
 void drawLevel(uint8_t *level, uint8_t len) {
     uint8_t *start = level;
     uint8_t *end = start + len;
@@ -155,12 +160,14 @@ void drawLevel(uint8_t *level, uint8_t len) {
     } while (start != end);
 }
 
+/*Empty out the text frame buffer.*/
 void clearTextBuffer() {
     for(uint16_t i=0; i<0x300; i++) {
         _vdp_textBuffer[i] = 0x00;
     }
 }
 
+/* Sets up a new level */
 void setup_level() {
     clearTextBuffer();
     //Reset snake length and circ buffer
@@ -180,6 +187,7 @@ void setup_level() {
     pause=true;
 }
 
+/* Sets up a new game. */
 void setup_game() {
     clearTextBuffer();
     initNABULIBAudio(); // reset to regular music mode
@@ -190,13 +198,11 @@ void setup_game() {
     setup_level();
 }
 
+/* Delay routine synced to the VDP interrupts (1 frame = 1/60 seconds)*/
 void delay(uint8_t frames) {
-    uint8_t ticks = 0;
-    while(true) {
+    while (frames > 0) {
         vdp_waitVDPReadyInt();
-        ticks ++;
-        if (ticks > frames)
-            break;
+        frames --;
     }
 }
 
@@ -208,6 +214,7 @@ void game() {
             bool flash = false;
             while(true) {
                 if (getJoyStatus(0) & Joy_Button) {
+                    pause = false;
                     break;
                 }
                 delay(5);
@@ -221,30 +228,27 @@ void game() {
                 vdp_refreshViewPort();
             }
             vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
-            pause = false;
-        } else {
-            //get input - Joystick move in 4 directions. (EASY MODE)
-            //read the joystick status only one time. - Metastabliity - Thanks JW.
-            if(ticks % 3 == 0) {        // Trying to avoid player moving too quickly between moves.
-                uint8_t js = getJoyStatus(0);
-                if( (js & Joy_Left) && (head.dir != HEAD_RIGHT) ) {
-                    head.dir = HEAD_LEFT;
-                    head.pattern = HEAD_LEFT;
-                }
-                else if( (js & Joy_Up) && (head.dir != HEAD_DOWN) ) {
-                    head.dir = HEAD_UP;
-                    head.pattern = HEAD_UP;
-                }
-                else if( (js & Joy_Right) && (head.dir != HEAD_LEFT) ) {
-                    head.dir = HEAD_RIGHT;
-                    head.pattern = HEAD_RIGHT;
-                }
-                else if( (js & Joy_Down) && (head.dir != HEAD_UP) ) {
-                    head.dir = HEAD_DOWN;
-                    head.pattern = HEAD_DOWN;
-                }
+        } else { //if not paused
+            //Get user input one time only. Flag if the user has moved.
+            uint8_t js = getJoyStatus(0);
+            if( (js & Joy_Left) && (head.dir != HEAD_RIGHT)) {
+                head.dir = HEAD_LEFT;
+                head.pattern = HEAD_LEFT;
+            }
+            else if( (js & Joy_Up) && (head.dir != HEAD_DOWN)) {
+                head.dir = HEAD_UP;
+                head.pattern = HEAD_UP;
+            }
+            else if( (js & Joy_Right) && (head.dir != HEAD_LEFT)) {
+                head.dir = HEAD_RIGHT;
+                head.pattern = HEAD_RIGHT;
+            }
+            else if( (js & Joy_Down) && (head.dir != HEAD_UP)) {
+                head.dir = HEAD_DOWN;
+                head.pattern = HEAD_DOWN;
             }
 
+            /* Regulate the speed of the game */
             if (ticks % game_speed == 0) {
                 // move the head
                 if (head.dir == HEAD_LEFT) {
@@ -259,13 +263,11 @@ void game() {
                 else if (head.dir == HEAD_DOWN) {
                     head.y ++;
                 }
-
                 //check for collisions
-
                 //Border Collisions first
-                if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23)
+                if(head.x < 0 || head.x > 31 || head.y < 0 || head.y > 23) {
                     crashed = true;
-
+                }
                 uint8_t _next = vdp_getCharAtLocationBuf(head.x, head.y);
                 if(_next == APPLE) {
                 //Apple check
@@ -273,9 +275,6 @@ void game() {
                     new_apple();
                     apples_eaten ++;
                     score = score + abs(apples_eaten / 10) + 1;
-                    if (high_score < score) {
-                        high_score = score;
-                    }
                     
                     if (apples_eaten % 10 == 0 && apples_eaten > 20 && game_speed > 5) {
                         game_speed --;
@@ -307,7 +306,7 @@ void game() {
                 }
                 circularBuffer[buffer_head] = head.x;
                 circularBuffer[buffer_head + 1] = head.y;
-
+                /* delete the tail if we are not growing otherwise reduce the counter of how much to grow by.*/
                 if(segments == 0) {
                     if(buffer_tail < BUFFSIZE) {
                         buffer_tail = buffer_tail + 2;
@@ -322,17 +321,23 @@ void game() {
                 //clear the tail
                 vdp_setCharAtLocationBuf(circularBuffer[buffer_tail], circularBuffer[buffer_tail + 1], 0x00);
                 nt_handleNote();
-            }
+            } //End of if gamespeed % 0
+
+            /* Refresh the display if we have not crashed.*/
             if (!crashed) {
                 vdp_waitVDPReadyInt();
                 vdp_refreshViewPort();
-                ticks ++;
+                ticks ++; //Tick the game.
             }
-        } //pause else
-    }
-    if (saved_high_score < high_score) {
+        } //end if not paused
+    } //end while not crashed
+
+    /* We have crashed - update and save high score */
+    if (high_score < score ) {
+        high_score = score;
         setHighScore(high_score);
     }
+
     // play crash sound
     ayWrite(6,  0x0f);
     ayWrite(7,  0b11000111);
@@ -342,22 +347,28 @@ void game() {
     ayWrite(11, 0xa0);
     ayWrite(12, 0x40);
     ayWrite(13, 0x00);
-    
-    uint8_t timer = 0;
-    while (timer < 180) { //3 seconds
-        vdp_waitVDPReadyInt();
-        timer ++;
-    }
+
+    /* NOTE XXX
+    * If I try to save the high score here (after playing the crash sound) The game crashes.
+    * It does not crash when I try to save the high score immediately before these
+    * ayWrite() calls.
+    * Which is a pain, because there is this short delay before the crash audio when the high
+    * score is saved to disk.
+    */
+
+    /* Wait a few seconds for the player to see the carnage.*/
+    delay(180);
+    nt_stopSounds(); // We need to stop the sounds here.  Sometimes, if we don't, the last sound played is played for ever.
 }
 
-void main() {
+void main(void) {
     init();
-    vdp_enableVDPReadyInt();
-    getHighScore();
+    high_score = getHighScore();
+    /* While the user continues at the menu, play the game.*/
     while(menu()) {
         setup_game();
         game();
-    };
+    }
     vdp_disableVDPReadyInt();
     #if BIN_TYPE == BIN_HOMEBREW
     __asm
