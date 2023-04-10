@@ -1,0 +1,3449 @@
+# File ascii.asm
+0000			; ASCII table TMS9918A text mode example program 
+0000			; by J.B. Langston 
+0000			 
+0000			LineLen:                equ 32 
+0000			DoubleHorizontal:       equ 205 
+0000			DoubleVertical:         equ 186 
+0000			DoubleTopLeft:          equ 201 
+0000			DoubleTopRight:         equ 187 
+0000			DoubleBottomLeft:       equ 200 
+0000			DoubleBottomRight:      equ 188 
+0000			 
+0000			 
+0000			        org     100h 
+0100			 
+0100 ed 73 e7 0c	        ld      (OldSP),sp                      ; save old Stack poitner 
+0104 31 29 0d		        ld      sp, Stack                       ; set up Stack 
+0107			 
+0107 cd d3 09		        call    TmsSetWait                      ; set VDP wait loop based on clock multiple 
+010a			 
+010a cd de 09		        call    TmsProbe                        ; find what port TMS9918A listens on 
+010d ca 78 01		        jp      z, NoTms 
+0110			 
+0110 21 c1 01		        ld      hl, TmsFont                     ; pointer to font 
+0113 cd d3 0a		        call    TmsTextMode                     ; initialize text mode 
+0116			 
+0116 3e 04		        ld      a, TmsDarkBlue                  ; set colors 
+0118 cd 38 0a		        call    TmsBackground 
+011b 3e 0f		        ld      a, TmsWhite 
+011d cd e9 0b		        call    TmsTextColor 
+0120			 
+0120 cd 81 01		        call    TextBorder 
+0123			 
+0123 3e 0b		        ld      a, 11                           ; put title at 11, 1 
+0125 1e 02		        ld      e, 2 
+0127 cd fc 0b		        call    TmsTextPos 
+012a 21 d3 0c		        ld      hl, TitleMessage                ; output title 
+012d cd 29 0c		        call    TmsStrOut 
+0130			 
+0130 3e 00		        ld      a, 0                            ; start at character 0 
+0132 06 20		        ld      b, LineLen                      ; 32 chars per line 
+0134 0e 06		        ld      c, 6                            ; start at line 6 
+0136 f5			        push    af                              ; save current character 
+0137			NextLine: 
+0137 3e 04		        ld      a, 0+(40-LineLen)/2             ; center text 
+0139 59			        ld      e, c                            ; on current line 
+013a cd fc 0b		        call    TmsTextPos 
+013d f1			        pop     af                              ; get current character 
+013e			NextChar: 
+013e cd 1c 0a		        call    TmsRamOut 
+0141 3c			        inc     a                               ; BorderLoop character 
+0142 ca 52 01		        jp      z, Exit 
+0145 b8			        cp      b                               ; time for a new line? 
+0146 c2 3e 01		        jp      nz, NextChar                    ; if not, output the BorderLoop character 
+0149 f5			        push    af                              ; if so, save the BorderLoop character 
+014a c6 20		        add     a, LineLen                      ; 32 characters on the BorderLoop line 
+014c 47			        ld      b, a 
+014d 0c			        inc     c                               ; skip two lines 
+014e 0c			        inc     c 
+014f c3 37 01		        jp      NextLine                        ; do the BorderLoop line 
+0152			 
+0152			Exit: 
+0152 cd cc 0c		        call    getchar 
+0155 ed 7b e7 0c	        ld      sp, (OldSP) 
+0159 c7			        rst     0 
+015a			 
+015a			NoTmsMessage: 
+015a ..			        defb    "TMS9918A not found, aborting!$" 
+0178 11 5a 01		NoTms:  ld      de, NoTmsMessage 
+017b cd be 0c		        call    strout 
+017e c3 52 01		        jp      Exit 
+0181			 
+0181			TextBorder: 
+0181 3e 00		        ld      a, 0                            ; start at upper left 
+0183 1e 00		        ld      e, 0 
+0185 cd fc 0b		        call    TmsTextPos 
+0188 3e c9		        ld      a, DoubleTopLeft                ; output corner 
+018a cd 1c 0a		        call    TmsChrOut 
+018d 06 26		        ld      b, 38                           ; output top border 
+018f 3e cd		        ld      a, DoubleHorizontal 
+0191 cd 34 0c		        call    TmsRepeat 
+0194 3e bb		        ld      a, DoubleTopRight               ; output corner 
+0196 cd 1c 0a		        call    TmsChrOut 
+0199 0e 16		        ld      c, 22                           ; output left/right borders for 22 lines 
+019b			BorderLoop: 
+019b 3e ba		        ld      a, DoubleVertical               ; vertical border 
+019d cd 1c 0a		        call    TmsChrOut 
+01a0 3e 20		        ld      a, ' '                          ; space 
+01a2 06 26		        ld      b, 38 
+01a4 cd 34 0c		        call    TmsRepeat 
+01a7 3e ba		        ld      a, DoubleVertical               ; vertical border 
+01a9 cd 1c 0a		        call    TmsChrOut 
+01ac 0d			        dec     c 
+01ad 20 ec		        jr      nz, BorderLoop 
+01af 3e c8		        ld      a, DoubleBottomLeft             ; bottom right 
+01b1 cd 1c 0a		        call    TmsChrOut 
+01b4 3e cd		        ld      a, DoubleHorizontal 
+01b6 06 26		        ld      b, 38 
+01b8 cd 34 0c		        call    TmsRepeat 
+01bb 3e bc		        ld      a, DoubleBottomRight 
+01bd cd 1c 0a		        call    TmsChrOut 
+01c0 c9			        ret 
+01c1			 
+01c1			TmsFont: 
+01c1			        include "TmsFont.asm" 
+01c1			; 6x8 bitmap font by Oleg Kosenkov 
+01c1			; Source: https://github.com/idispatch/raster-fonts/blob/master/font-6x8.c 
+01c1			 
+01c1			        ; code=0, hex=0x00, ascii="^@" 
+01c1 00			        defb %00000000 
+01c2 00			        defb %00000000 
+01c3 00			        defb %00000000 
+01c4 00			        defb %00000000 
+01c5 00			        defb %00000000 
+01c6 00			        defb %00000000 
+01c7 00			        defb %00000000 
+01c8 00			        defb %00000000 
+01c9			 
+01c9			        ; code=1, hex=0x01, ascii="^A" 
+01c9 38			        defb %00111000 
+01ca 44			        defb %01000100 
+01cb 6c			        defb %01101100 
+01cc 44			        defb %01000100 
+01cd 54			        defb %01010100 
+01ce 44			        defb %01000100 
+01cf 38			        defb %00111000 
+01d0 00			        defb %00000000 
+01d1			 
+01d1			        ; code=2, hex=0x02, ascii="^B" 
+01d1 38			        defb %00111000 
+01d2 7c			        defb %01111100 
+01d3 54			        defb %01010100 
+01d4 7c			        defb %01111100 
+01d5 44			        defb %01000100 
+01d6 7c			        defb %01111100 
+01d7 38			        defb %00111000 
+01d8 00			        defb %00000000 
+01d9			 
+01d9			        ; code=3, hex=0x03, ascii="^C" 
+01d9 00			        defb %00000000 
+01da 28			        defb %00101000 
+01db 7c			        defb %01111100 
+01dc 7c			        defb %01111100 
+01dd 7c			        defb %01111100 
+01de 38			        defb %00111000 
+01df 10			        defb %00010000 
+01e0 00			        defb %00000000 
+01e1			 
+01e1			        ; code=4, hex=0x04, ascii="^D" 
+01e1 00			        defb %00000000 
+01e2 10			        defb %00010000 
+01e3 38			        defb %00111000 
+01e4 7c			        defb %01111100 
+01e5 7c			        defb %01111100 
+01e6 38			        defb %00111000 
+01e7 10			        defb %00010000 
+01e8 00			        defb %00000000 
+01e9			 
+01e9			        ; code=5, hex=0x05, ascii="^E" 
+01e9 10			        defb %00010000 
+01ea 38			        defb %00111000 
+01eb 38			        defb %00111000 
+01ec 10			        defb %00010000 
+01ed 7c			        defb %01111100 
+01ee 7c			        defb %01111100 
+01ef 10			        defb %00010000 
+01f0 00			        defb %00000000 
+01f1			 
+01f1			        ; code=6, hex=0x06, ascii="^F" 
+01f1 00			        defb %00000000 
+01f2 10			        defb %00010000 
+01f3 38			        defb %00111000 
+01f4 7c			        defb %01111100 
+01f5 7c			        defb %01111100 
+01f6 10			        defb %00010000 
+01f7 38			        defb %00111000 
+01f8 00			        defb %00000000 
+01f9			 
+01f9			        ; code=7, hex=0x07, ascii="^G" 
+01f9 00			        defb %00000000 
+01fa 00			        defb %00000000 
+01fb 00			        defb %00000000 
+01fc 30			        defb %00110000 
+01fd 30			        defb %00110000 
+01fe 00			        defb %00000000 
+01ff 00			        defb %00000000 
+0200 00			        defb %00000000 
+0201			 
+0201			        ; code=8, hex=0x08, ascii="^H" 
+0201 fc			        defb %11111100 
+0202 fc			        defb %11111100 
+0203 fc			        defb %11111100 
+0204 cc			        defb %11001100 
+0205 cc			        defb %11001100 
+0206 fc			        defb %11111100 
+0207 fc			        defb %11111100 
+0208 fc			        defb %11111100 
+0209			 
+0209			        ; code=9, hex=0x09, ascii="^I" 
+0209 00			        defb %00000000 
+020a 00			        defb %00000000 
+020b 78			        defb %01111000 
+020c 48			        defb %01001000 
+020d 48			        defb %01001000 
+020e 78			        defb %01111000 
+020f 00			        defb %00000000 
+0210 00			        defb %00000000 
+0211			 
+0211			        ; code=10, hex=0x0A, ascii="^J" 
+0211 fc			        defb %11111100 
+0212 fc			        defb %11111100 
+0213 84			        defb %10000100 
+0214 b4			        defb %10110100 
+0215 b4			        defb %10110100 
+0216 84			        defb %10000100 
+0217 fc			        defb %11111100 
+0218 fc			        defb %11111100 
+0219			 
+0219			        ; code=11, hex=0x0B, ascii="^K" 
+0219 00			        defb %00000000 
+021a 1c			        defb %00011100 
+021b 0c			        defb %00001100 
+021c 34			        defb %00110100 
+021d 48			        defb %01001000 
+021e 48			        defb %01001000 
+021f 30			        defb %00110000 
+0220 00			        defb %00000000 
+0221			 
+0221			        ; code=12, hex=0x0C, ascii="^L" 
+0221 38			        defb %00111000 
+0222 44			        defb %01000100 
+0223 44			        defb %01000100 
+0224 38			        defb %00111000 
+0225 10			        defb %00010000 
+0226 38			        defb %00111000 
+0227 10			        defb %00010000 
+0228 00			        defb %00000000 
+0229			 
+0229			        ; code=13, hex=0x0D, ascii="^M" 
+0229 10			        defb %00010000 
+022a 18			        defb %00011000 
+022b 14			        defb %00010100 
+022c 10			        defb %00010000 
+022d 30			        defb %00110000 
+022e 70			        defb %01110000 
+022f 60			        defb %01100000 
+0230 00			        defb %00000000 
+0231			 
+0231			        ; code=14, hex=0x0E, ascii="^N" 
+0231 0c			        defb %00001100 
+0232 34			        defb %00110100 
+0233 2c			        defb %00101100 
+0234 34			        defb %00110100 
+0235 2c			        defb %00101100 
+0236 6c			        defb %01101100 
+0237 60			        defb %01100000 
+0238 00			        defb %00000000 
+0239			 
+0239			        ; code=15, hex=0x0F, ascii="^O" 
+0239 00			        defb %00000000 
+023a 54			        defb %01010100 
+023b 38			        defb %00111000 
+023c 6c			        defb %01101100 
+023d 38			        defb %00111000 
+023e 54			        defb %01010100 
+023f 00			        defb %00000000 
+0240 00			        defb %00000000 
+0241			 
+0241			        ; code=16, hex=0x10, ascii="^P" 
+0241 20			        defb %00100000 
+0242 30			        defb %00110000 
+0243 38			        defb %00111000 
+0244 3c			        defb %00111100 
+0245 38			        defb %00111000 
+0246 30			        defb %00110000 
+0247 20			        defb %00100000 
+0248 00			        defb %00000000 
+0249			 
+0249			        ; code=17, hex=0x11, ascii="^Q" 
+0249 08			        defb %00001000 
+024a 18			        defb %00011000 
+024b 38			        defb %00111000 
+024c 78			        defb %01111000 
+024d 38			        defb %00111000 
+024e 18			        defb %00011000 
+024f 08			        defb %00001000 
+0250 00			        defb %00000000 
+0251			 
+0251			        ; code=18, hex=0x12, ascii="^R" 
+0251 10			        defb %00010000 
+0252 38			        defb %00111000 
+0253 7c			        defb %01111100 
+0254 10			        defb %00010000 
+0255 7c			        defb %01111100 
+0256 38			        defb %00111000 
+0257 10			        defb %00010000 
+0258 00			        defb %00000000 
+0259			 
+0259			        ; code=19, hex=0x13, ascii="^S" 
+0259 28			        defb %00101000 
+025a 28			        defb %00101000 
+025b 28			        defb %00101000 
+025c 28			        defb %00101000 
+025d 28			        defb %00101000 
+025e 00			        defb %00000000 
+025f 28			        defb %00101000 
+0260 00			        defb %00000000 
+0261			 
+0261			        ; code=20, hex=0x14, ascii="^T" 
+0261 3c			        defb %00111100 
+0262 54			        defb %01010100 
+0263 54			        defb %01010100 
+0264 34			        defb %00110100 
+0265 14			        defb %00010100 
+0266 14			        defb %00010100 
+0267 14			        defb %00010100 
+0268 00			        defb %00000000 
+0269			 
+0269			        ; code=21, hex=0x15, ascii="^U" 
+0269 38			        defb %00111000 
+026a 44			        defb %01000100 
+026b 30			        defb %00110000 
+026c 28			        defb %00101000 
+026d 18			        defb %00011000 
+026e 44			        defb %01000100 
+026f 38			        defb %00111000 
+0270 00			        defb %00000000 
+0271			 
+0271			        ; code=22, hex=0x16, ascii="^V" 
+0271 00			        defb %00000000 
+0272 00			        defb %00000000 
+0273 00			        defb %00000000 
+0274 00			        defb %00000000 
+0275 00			        defb %00000000 
+0276 78			        defb %01111000 
+0277 78			        defb %01111000 
+0278 00			        defb %00000000 
+0279			 
+0279			        ; code=23, hex=0x17, ascii="^W" 
+0279 10			        defb %00010000 
+027a 38			        defb %00111000 
+027b 7c			        defb %01111100 
+027c 10			        defb %00010000 
+027d 7c			        defb %01111100 
+027e 38			        defb %00111000 
+027f 10			        defb %00010000 
+0280 38			        defb %00111000 
+0281			 
+0281			        ; code=24, hex=0x18, ascii="^X" 
+0281 10			        defb %00010000 
+0282 38			        defb %00111000 
+0283 7c			        defb %01111100 
+0284 10			        defb %00010000 
+0285 10			        defb %00010000 
+0286 10			        defb %00010000 
+0287 10			        defb %00010000 
+0288 00			        defb %00000000 
+0289			 
+0289			        ; code=25, hex=0x19, ascii="^Y" 
+0289 10			        defb %00010000 
+028a 10			        defb %00010000 
+028b 10			        defb %00010000 
+028c 10			        defb %00010000 
+028d 7c			        defb %01111100 
+028e 38			        defb %00111000 
+028f 10			        defb %00010000 
+0290 00			        defb %00000000 
+0291			 
+0291			        ; code=26, hex=0x1A, ascii="^Z" 
+0291 00			        defb %00000000 
+0292 10			        defb %00010000 
+0293 18			        defb %00011000 
+0294 7c			        defb %01111100 
+0295 18			        defb %00011000 
+0296 10			        defb %00010000 
+0297 00			        defb %00000000 
+0298 00			        defb %00000000 
+0299			 
+0299			        ; code=27, hex=0x1B, ascii="^[" 
+0299 00			        defb %00000000 
+029a 10			        defb %00010000 
+029b 30			        defb %00110000 
+029c 7c			        defb %01111100 
+029d 30			        defb %00110000 
+029e 10			        defb %00010000 
+029f 00			        defb %00000000 
+02a0 00			        defb %00000000 
+02a1			 
+02a1			        ; code=28, hex=0x1C, ascii="^\" 
+02a1 00			        defb %00000000 
+02a2 00			        defb %00000000 
+02a3 00			        defb %00000000 
+02a4 40			        defb %01000000 
+02a5 40			        defb %01000000 
+02a6 40			        defb %01000000 
+02a7 7c			        defb %01111100 
+02a8 00			        defb %00000000 
+02a9			 
+02a9			        ; code=29, hex=0x1D, ascii="^]" 
+02a9 00			        defb %00000000 
+02aa 28			        defb %00101000 
+02ab 28			        defb %00101000 
+02ac 7c			        defb %01111100 
+02ad 28			        defb %00101000 
+02ae 28			        defb %00101000 
+02af 00			        defb %00000000 
+02b0 00			        defb %00000000 
+02b1			 
+02b1			        ; code=30, hex=0x1E, ascii="^^" 
+02b1 10			        defb %00010000 
+02b2 10			        defb %00010000 
+02b3 38			        defb %00111000 
+02b4 38			        defb %00111000 
+02b5 7c			        defb %01111100 
+02b6 7c			        defb %01111100 
+02b7 00			        defb %00000000 
+02b8 00			        defb %00000000 
+02b9			 
+02b9			        ; code=31, hex=0x1F, ascii="^_" 
+02b9 7c			        defb %01111100 
+02ba 7c			        defb %01111100 
+02bb 38			        defb %00111000 
+02bc 38			        defb %00111000 
+02bd 10			        defb %00010000 
+02be 10			        defb %00010000 
+02bf 00			        defb %00000000 
+02c0 00			        defb %00000000 
+02c1			 
+02c1			        ; code=32, hex=0x20, ascii=" " 
+02c1 00			        defb %00000000 
+02c2 00			        defb %00000000 
+02c3 00			        defb %00000000 
+02c4 00			        defb %00000000 
+02c5 00			        defb %00000000 
+02c6 00			        defb %00000000 
+02c7 00			        defb %00000000 
+02c8 00			        defb %00000000 
+02c9			 
+02c9			        ; code=33, hex=0x21, ascii="!" 
+02c9 10			        defb %00010000 
+02ca 38			        defb %00111000 
+02cb 38			        defb %00111000 
+02cc 10			        defb %00010000 
+02cd 10			        defb %00010000 
+02ce 00			        defb %00000000 
+02cf 10			        defb %00010000 
+02d0 00			        defb %00000000 
+02d1			 
+02d1			        ; code=34, hex=0x22, ascii=""" 
+02d1 6c			        defb %01101100 
+02d2 6c			        defb %01101100 
+02d3 48			        defb %01001000 
+02d4 00			        defb %00000000 
+02d5 00			        defb %00000000 
+02d6 00			        defb %00000000 
+02d7 00			        defb %00000000 
+02d8 00			        defb %00000000 
+02d9			 
+02d9			        ; code=35, hex=0x23, ascii="#" 
+02d9 00			        defb %00000000 
+02da 28			        defb %00101000 
+02db 7c			        defb %01111100 
+02dc 28			        defb %00101000 
+02dd 28			        defb %00101000 
+02de 7c			        defb %01111100 
+02df 28			        defb %00101000 
+02e0 00			        defb %00000000 
+02e1			 
+02e1			        ; code=36, hex=0x24, ascii="$" 
+02e1 20			        defb %00100000 
+02e2 38			        defb %00111000 
+02e3 40			        defb %01000000 
+02e4 30			        defb %00110000 
+02e5 08			        defb %00001000 
+02e6 70			        defb %01110000 
+02e7 10			        defb %00010000 
+02e8 00			        defb %00000000 
+02e9			 
+02e9			        ; code=37, hex=0x25, ascii="%" 
+02e9 64			        defb %01100100 
+02ea 64			        defb %01100100 
+02eb 08			        defb %00001000 
+02ec 10			        defb %00010000 
+02ed 20			        defb %00100000 
+02ee 4c			        defb %01001100 
+02ef 4c			        defb %01001100 
+02f0 00			        defb %00000000 
+02f1			 
+02f1			        ; code=38, hex=0x26, ascii="&" 
+02f1 20			        defb %00100000 
+02f2 50			        defb %01010000 
+02f3 50			        defb %01010000 
+02f4 20			        defb %00100000 
+02f5 54			        defb %01010100 
+02f6 48			        defb %01001000 
+02f7 34			        defb %00110100 
+02f8 00			        defb %00000000 
+02f9			 
+02f9			        ; code=39, hex=0x27, ascii="'" 
+02f9 30			        defb %00110000 
+02fa 30			        defb %00110000 
+02fb 20			        defb %00100000 
+02fc 00			        defb %00000000 
+02fd 00			        defb %00000000 
+02fe 00			        defb %00000000 
+02ff 00			        defb %00000000 
+0300 00			        defb %00000000 
+0301			 
+0301			        ; code=40, hex=0x28, ascii="(" 
+0301 10			        defb %00010000 
+0302 20			        defb %00100000 
+0303 20			        defb %00100000 
+0304 20			        defb %00100000 
+0305 20			        defb %00100000 
+0306 20			        defb %00100000 
+0307 10			        defb %00010000 
+0308 00			        defb %00000000 
+0309			 
+0309			        ; code=41, hex=0x29, ascii=")" 
+0309 20			        defb %00100000 
+030a 10			        defb %00010000 
+030b 10			        defb %00010000 
+030c 10			        defb %00010000 
+030d 10			        defb %00010000 
+030e 10			        defb %00010000 
+030f 20			        defb %00100000 
+0310 00			        defb %00000000 
+0311			 
+0311			        ; code=42, hex=0x2A, ascii="*" 
+0311 00			        defb %00000000 
+0312 28			        defb %00101000 
+0313 38			        defb %00111000 
+0314 7c			        defb %01111100 
+0315 38			        defb %00111000 
+0316 28			        defb %00101000 
+0317 00			        defb %00000000 
+0318 00			        defb %00000000 
+0319			 
+0319			        ; code=43, hex=0x2B, ascii="+" 
+0319 00			        defb %00000000 
+031a 10			        defb %00010000 
+031b 10			        defb %00010000 
+031c 7c			        defb %01111100 
+031d 10			        defb %00010000 
+031e 10			        defb %00010000 
+031f 00			        defb %00000000 
+0320 00			        defb %00000000 
+0321			 
+0321			        ; code=44, hex=0x2C, ascii="," 
+0321 00			        defb %00000000 
+0322 00			        defb %00000000 
+0323 00			        defb %00000000 
+0324 00			        defb %00000000 
+0325 00			        defb %00000000 
+0326 30			        defb %00110000 
+0327 30			        defb %00110000 
+0328 20			        defb %00100000 
+0329			 
+0329			        ; code=45, hex=0x2D, ascii="-" 
+0329 00			        defb %00000000 
+032a 00			        defb %00000000 
+032b 00			        defb %00000000 
+032c 7c			        defb %01111100 
+032d 00			        defb %00000000 
+032e 00			        defb %00000000 
+032f 00			        defb %00000000 
+0330 00			        defb %00000000 
+0331			 
+0331			        ; code=46, hex=0x2E, ascii="." 
+0331 00			        defb %00000000 
+0332 00			        defb %00000000 
+0333 00			        defb %00000000 
+0334 00			        defb %00000000 
+0335 00			        defb %00000000 
+0336 30			        defb %00110000 
+0337 30			        defb %00110000 
+0338 00			        defb %00000000 
+0339			 
+0339			        ; code=47, hex=0x2F, ascii="/" 
+0339 00			        defb %00000000 
+033a 04			        defb %00000100 
+033b 08			        defb %00001000 
+033c 10			        defb %00010000 
+033d 20			        defb %00100000 
+033e 40			        defb %01000000 
+033f 00			        defb %00000000 
+0340 00			        defb %00000000 
+0341			 
+0341			        ; code=48, hex=0x30, ascii="0" 
+0341 38			        defb %00111000 
+0342 44			        defb %01000100 
+0343 4c			        defb %01001100 
+0344 54			        defb %01010100 
+0345 64			        defb %01100100 
+0346 44			        defb %01000100 
+0347 38			        defb %00111000 
+0348 00			        defb %00000000 
+0349			 
+0349			        ; code=49, hex=0x31, ascii="1" 
+0349 10			        defb %00010000 
+034a 30			        defb %00110000 
+034b 10			        defb %00010000 
+034c 10			        defb %00010000 
+034d 10			        defb %00010000 
+034e 10			        defb %00010000 
+034f 38			        defb %00111000 
+0350 00			        defb %00000000 
+0351			 
+0351			        ; code=50, hex=0x32, ascii="2" 
+0351 38			        defb %00111000 
+0352 44			        defb %01000100 
+0353 04			        defb %00000100 
+0354 18			        defb %00011000 
+0355 20			        defb %00100000 
+0356 40			        defb %01000000 
+0357 7c			        defb %01111100 
+0358 00			        defb %00000000 
+0359			 
+0359			        ; code=51, hex=0x33, ascii="3" 
+0359 38			        defb %00111000 
+035a 44			        defb %01000100 
+035b 04			        defb %00000100 
+035c 38			        defb %00111000 
+035d 04			        defb %00000100 
+035e 44			        defb %01000100 
+035f 38			        defb %00111000 
+0360 00			        defb %00000000 
+0361			 
+0361			        ; code=52, hex=0x34, ascii="4" 
+0361 08			        defb %00001000 
+0362 18			        defb %00011000 
+0363 28			        defb %00101000 
+0364 48			        defb %01001000 
+0365 7c			        defb %01111100 
+0366 08			        defb %00001000 
+0367 08			        defb %00001000 
+0368 00			        defb %00000000 
+0369			 
+0369			        ; code=53, hex=0x35, ascii="5" 
+0369 7c			        defb %01111100 
+036a 40			        defb %01000000 
+036b 40			        defb %01000000 
+036c 78			        defb %01111000 
+036d 04			        defb %00000100 
+036e 44			        defb %01000100 
+036f 38			        defb %00111000 
+0370 00			        defb %00000000 
+0371			 
+0371			        ; code=54, hex=0x36, ascii="6" 
+0371 18			        defb %00011000 
+0372 20			        defb %00100000 
+0373 40			        defb %01000000 
+0374 78			        defb %01111000 
+0375 44			        defb %01000100 
+0376 44			        defb %01000100 
+0377 38			        defb %00111000 
+0378 00			        defb %00000000 
+0379			 
+0379			        ; code=55, hex=0x37, ascii="7" 
+0379 7c			        defb %01111100 
+037a 04			        defb %00000100 
+037b 08			        defb %00001000 
+037c 10			        defb %00010000 
+037d 20			        defb %00100000 
+037e 20			        defb %00100000 
+037f 20			        defb %00100000 
+0380 00			        defb %00000000 
+0381			 
+0381			        ; code=56, hex=0x38, ascii="8" 
+0381 38			        defb %00111000 
+0382 44			        defb %01000100 
+0383 44			        defb %01000100 
+0384 38			        defb %00111000 
+0385 44			        defb %01000100 
+0386 44			        defb %01000100 
+0387 38			        defb %00111000 
+0388 00			        defb %00000000 
+0389			 
+0389			        ; code=57, hex=0x39, ascii="9" 
+0389 38			        defb %00111000 
+038a 44			        defb %01000100 
+038b 44			        defb %01000100 
+038c 3c			        defb %00111100 
+038d 04			        defb %00000100 
+038e 08			        defb %00001000 
+038f 30			        defb %00110000 
+0390 00			        defb %00000000 
+0391			 
+0391			        ; code=58, hex=0x3A, ascii=":" 
+0391 00			        defb %00000000 
+0392 00			        defb %00000000 
+0393 30			        defb %00110000 
+0394 30			        defb %00110000 
+0395 00			        defb %00000000 
+0396 30			        defb %00110000 
+0397 30			        defb %00110000 
+0398 00			        defb %00000000 
+0399			 
+0399			        ; code=59, hex=0x3B, ascii=";" 
+0399 00			        defb %00000000 
+039a 00			        defb %00000000 
+039b 30			        defb %00110000 
+039c 30			        defb %00110000 
+039d 00			        defb %00000000 
+039e 30			        defb %00110000 
+039f 30			        defb %00110000 
+03a0 20			        defb %00100000 
+03a1			 
+03a1			        ; code=60, hex=0x3C, ascii="<" 
+03a1 08			        defb %00001000 
+03a2 10			        defb %00010000 
+03a3 20			        defb %00100000 
+03a4 40			        defb %01000000 
+03a5 20			        defb %00100000 
+03a6 10			        defb %00010000 
+03a7 08			        defb %00001000 
+03a8 00			        defb %00000000 
+03a9			 
+03a9			        ; code=61, hex=0x3D, ascii="=" 
+03a9 00			        defb %00000000 
+03aa 00			        defb %00000000 
+03ab 7c			        defb %01111100 
+03ac 00			        defb %00000000 
+03ad 00			        defb %00000000 
+03ae 7c			        defb %01111100 
+03af 00			        defb %00000000 
+03b0 00			        defb %00000000 
+03b1			 
+03b1			        ; code=62, hex=0x3E, ascii=">" 
+03b1 20			        defb %00100000 
+03b2 10			        defb %00010000 
+03b3 08			        defb %00001000 
+03b4 04			        defb %00000100 
+03b5 08			        defb %00001000 
+03b6 10			        defb %00010000 
+03b7 20			        defb %00100000 
+03b8 00			        defb %00000000 
+03b9			 
+03b9			        ; code=63, hex=0x3F, ascii="?" 
+03b9 38			        defb %00111000 
+03ba 44			        defb %01000100 
+03bb 04			        defb %00000100 
+03bc 18			        defb %00011000 
+03bd 10			        defb %00010000 
+03be 00			        defb %00000000 
+03bf 10			        defb %00010000 
+03c0 00			        defb %00000000 
+03c1			 
+03c1			        ; code=64, hex=0x40, ascii="@" 
+03c1 38			        defb %00111000 
+03c2 44			        defb %01000100 
+03c3 5c			        defb %01011100 
+03c4 54			        defb %01010100 
+03c5 5c			        defb %01011100 
+03c6 40			        defb %01000000 
+03c7 38			        defb %00111000 
+03c8 00			        defb %00000000 
+03c9			 
+03c9			        ; code=65, hex=0x41, ascii="A" 
+03c9 38			        defb %00111000 
+03ca 44			        defb %01000100 
+03cb 44			        defb %01000100 
+03cc 44			        defb %01000100 
+03cd 7c			        defb %01111100 
+03ce 44			        defb %01000100 
+03cf 44			        defb %01000100 
+03d0 00			        defb %00000000 
+03d1			 
+03d1			        ; code=66, hex=0x42, ascii="B" 
+03d1 78			        defb %01111000 
+03d2 44			        defb %01000100 
+03d3 44			        defb %01000100 
+03d4 78			        defb %01111000 
+03d5 44			        defb %01000100 
+03d6 44			        defb %01000100 
+03d7 78			        defb %01111000 
+03d8 00			        defb %00000000 
+03d9			 
+03d9			        ; code=67, hex=0x43, ascii="C" 
+03d9 38			        defb %00111000 
+03da 44			        defb %01000100 
+03db 40			        defb %01000000 
+03dc 40			        defb %01000000 
+03dd 40			        defb %01000000 
+03de 44			        defb %01000100 
+03df 38			        defb %00111000 
+03e0 00			        defb %00000000 
+03e1			 
+03e1			        ; code=68, hex=0x44, ascii="D" 
+03e1 78			        defb %01111000 
+03e2 44			        defb %01000100 
+03e3 44			        defb %01000100 
+03e4 44			        defb %01000100 
+03e5 44			        defb %01000100 
+03e6 44			        defb %01000100 
+03e7 78			        defb %01111000 
+03e8 00			        defb %00000000 
+03e9			 
+03e9			        ; code=69, hex=0x45, ascii="E" 
+03e9 7c			        defb %01111100 
+03ea 40			        defb %01000000 
+03eb 40			        defb %01000000 
+03ec 78			        defb %01111000 
+03ed 40			        defb %01000000 
+03ee 40			        defb %01000000 
+03ef 7c			        defb %01111100 
+03f0 00			        defb %00000000 
+03f1			 
+03f1			        ; code=70, hex=0x46, ascii="F" 
+03f1 7c			        defb %01111100 
+03f2 40			        defb %01000000 
+03f3 40			        defb %01000000 
+03f4 78			        defb %01111000 
+03f5 40			        defb %01000000 
+03f6 40			        defb %01000000 
+03f7 40			        defb %01000000 
+03f8 00			        defb %00000000 
+03f9			 
+03f9			        ; code=71, hex=0x47, ascii="G" 
+03f9 38			        defb %00111000 
+03fa 44			        defb %01000100 
+03fb 40			        defb %01000000 
+03fc 5c			        defb %01011100 
+03fd 44			        defb %01000100 
+03fe 44			        defb %01000100 
+03ff 3c			        defb %00111100 
+0400 00			        defb %00000000 
+0401			 
+0401			        ; code=72, hex=0x48, ascii="H" 
+0401 44			        defb %01000100 
+0402 44			        defb %01000100 
+0403 44			        defb %01000100 
+0404 7c			        defb %01111100 
+0405 44			        defb %01000100 
+0406 44			        defb %01000100 
+0407 44			        defb %01000100 
+0408 00			        defb %00000000 
+0409			 
+0409			        ; code=73, hex=0x49, ascii="I" 
+0409 38			        defb %00111000 
+040a 10			        defb %00010000 
+040b 10			        defb %00010000 
+040c 10			        defb %00010000 
+040d 10			        defb %00010000 
+040e 10			        defb %00010000 
+040f 38			        defb %00111000 
+0410 00			        defb %00000000 
+0411			 
+0411			        ; code=74, hex=0x4A, ascii="J" 
+0411 04			        defb %00000100 
+0412 04			        defb %00000100 
+0413 04			        defb %00000100 
+0414 04			        defb %00000100 
+0415 44			        defb %01000100 
+0416 44			        defb %01000100 
+0417 38			        defb %00111000 
+0418 00			        defb %00000000 
+0419			 
+0419			        ; code=75, hex=0x4B, ascii="K" 
+0419 44			        defb %01000100 
+041a 48			        defb %01001000 
+041b 50			        defb %01010000 
+041c 60			        defb %01100000 
+041d 50			        defb %01010000 
+041e 48			        defb %01001000 
+041f 44			        defb %01000100 
+0420 00			        defb %00000000 
+0421			 
+0421			        ; code=76, hex=0x4C, ascii="L" 
+0421 40			        defb %01000000 
+0422 40			        defb %01000000 
+0423 40			        defb %01000000 
+0424 40			        defb %01000000 
+0425 40			        defb %01000000 
+0426 40			        defb %01000000 
+0427 7c			        defb %01111100 
+0428 00			        defb %00000000 
+0429			 
+0429			        ; code=77, hex=0x4D, ascii="M" 
+0429 44			        defb %01000100 
+042a 6c			        defb %01101100 
+042b 54			        defb %01010100 
+042c 44			        defb %01000100 
+042d 44			        defb %01000100 
+042e 44			        defb %01000100 
+042f 44			        defb %01000100 
+0430 00			        defb %00000000 
+0431			 
+0431			        ; code=78, hex=0x4E, ascii="N" 
+0431 44			        defb %01000100 
+0432 64			        defb %01100100 
+0433 54			        defb %01010100 
+0434 4c			        defb %01001100 
+0435 44			        defb %01000100 
+0436 44			        defb %01000100 
+0437 44			        defb %01000100 
+0438 00			        defb %00000000 
+0439			 
+0439			        ; code=79, hex=0x4F, ascii="O" 
+0439 38			        defb %00111000 
+043a 44			        defb %01000100 
+043b 44			        defb %01000100 
+043c 44			        defb %01000100 
+043d 44			        defb %01000100 
+043e 44			        defb %01000100 
+043f 38			        defb %00111000 
+0440 00			        defb %00000000 
+0441			 
+0441			        ; code=80, hex=0x50, ascii="P" 
+0441 78			        defb %01111000 
+0442 44			        defb %01000100 
+0443 44			        defb %01000100 
+0444 78			        defb %01111000 
+0445 40			        defb %01000000 
+0446 40			        defb %01000000 
+0447 40			        defb %01000000 
+0448 00			        defb %00000000 
+0449			 
+0449			        ; code=81, hex=0x51, ascii="Q" 
+0449 38			        defb %00111000 
+044a 44			        defb %01000100 
+044b 44			        defb %01000100 
+044c 44			        defb %01000100 
+044d 54			        defb %01010100 
+044e 48			        defb %01001000 
+044f 34			        defb %00110100 
+0450 00			        defb %00000000 
+0451			 
+0451			        ; code=82, hex=0x52, ascii="R" 
+0451 78			        defb %01111000 
+0452 44			        defb %01000100 
+0453 44			        defb %01000100 
+0454 78			        defb %01111000 
+0455 48			        defb %01001000 
+0456 44			        defb %01000100 
+0457 44			        defb %01000100 
+0458 00			        defb %00000000 
+0459			 
+0459			        ; code=83, hex=0x53, ascii="S" 
+0459 38			        defb %00111000 
+045a 44			        defb %01000100 
+045b 40			        defb %01000000 
+045c 38			        defb %00111000 
+045d 04			        defb %00000100 
+045e 44			        defb %01000100 
+045f 38			        defb %00111000 
+0460 00			        defb %00000000 
+0461			 
+0461			        ; code=84, hex=0x54, ascii="T" 
+0461 7c			        defb %01111100 
+0462 10			        defb %00010000 
+0463 10			        defb %00010000 
+0464 10			        defb %00010000 
+0465 10			        defb %00010000 
+0466 10			        defb %00010000 
+0467 10			        defb %00010000 
+0468 00			        defb %00000000 
+0469			 
+0469			        ; code=85, hex=0x55, ascii="U" 
+0469 44			        defb %01000100 
+046a 44			        defb %01000100 
+046b 44			        defb %01000100 
+046c 44			        defb %01000100 
+046d 44			        defb %01000100 
+046e 44			        defb %01000100 
+046f 38			        defb %00111000 
+0470 00			        defb %00000000 
+0471			 
+0471			        ; code=86, hex=0x56, ascii="V" 
+0471 44			        defb %01000100 
+0472 44			        defb %01000100 
+0473 44			        defb %01000100 
+0474 44			        defb %01000100 
+0475 44			        defb %01000100 
+0476 28			        defb %00101000 
+0477 10			        defb %00010000 
+0478 00			        defb %00000000 
+0479			 
+0479			        ; code=87, hex=0x57, ascii="W" 
+0479 44			        defb %01000100 
+047a 44			        defb %01000100 
+047b 54			        defb %01010100 
+047c 54			        defb %01010100 
+047d 54			        defb %01010100 
+047e 54			        defb %01010100 
+047f 28			        defb %00101000 
+0480 00			        defb %00000000 
+0481			 
+0481			        ; code=88, hex=0x58, ascii="X" 
+0481 44			        defb %01000100 
+0482 44			        defb %01000100 
+0483 28			        defb %00101000 
+0484 10			        defb %00010000 
+0485 28			        defb %00101000 
+0486 44			        defb %01000100 
+0487 44			        defb %01000100 
+0488 00			        defb %00000000 
+0489			 
+0489			        ; code=89, hex=0x59, ascii="Y" 
+0489 44			        defb %01000100 
+048a 44			        defb %01000100 
+048b 44			        defb %01000100 
+048c 28			        defb %00101000 
+048d 10			        defb %00010000 
+048e 10			        defb %00010000 
+048f 10			        defb %00010000 
+0490 00			        defb %00000000 
+0491			 
+0491			        ; code=90, hex=0x5A, ascii="Z" 
+0491 78			        defb %01111000 
+0492 08			        defb %00001000 
+0493 10			        defb %00010000 
+0494 20			        defb %00100000 
+0495 40			        defb %01000000 
+0496 40			        defb %01000000 
+0497 78			        defb %01111000 
+0498 00			        defb %00000000 
+0499			 
+0499			        ; code=91, hex=0x5B, ascii="[" 
+0499 38			        defb %00111000 
+049a 20			        defb %00100000 
+049b 20			        defb %00100000 
+049c 20			        defb %00100000 
+049d 20			        defb %00100000 
+049e 20			        defb %00100000 
+049f 38			        defb %00111000 
+04a0 00			        defb %00000000 
+04a1			 
+04a1			        ; code=92, hex=0x5C, ascii="\" 
+04a1 00			        defb %00000000 
+04a2 40			        defb %01000000 
+04a3 20			        defb %00100000 
+04a4 10			        defb %00010000 
+04a5 08			        defb %00001000 
+04a6 04			        defb %00000100 
+04a7 00			        defb %00000000 
+04a8 00			        defb %00000000 
+04a9			 
+04a9			        ; code=93, hex=0x5D, ascii="]" 
+04a9 38			        defb %00111000 
+04aa 08			        defb %00001000 
+04ab 08			        defb %00001000 
+04ac 08			        defb %00001000 
+04ad 08			        defb %00001000 
+04ae 08			        defb %00001000 
+04af 38			        defb %00111000 
+04b0 00			        defb %00000000 
+04b1			 
+04b1			        ; code=94, hex=0x5E, ascii="^" 
+04b1 10			        defb %00010000 
+04b2 28			        defb %00101000 
+04b3 44			        defb %01000100 
+04b4 00			        defb %00000000 
+04b5 00			        defb %00000000 
+04b6 00			        defb %00000000 
+04b7 00			        defb %00000000 
+04b8 00			        defb %00000000 
+04b9			 
+04b9			        ; code=95, hex=0x5F, ascii="_" 
+04b9 00			        defb %00000000 
+04ba 00			        defb %00000000 
+04bb 00			        defb %00000000 
+04bc 00			        defb %00000000 
+04bd 00			        defb %00000000 
+04be 00			        defb %00000000 
+04bf 00			        defb %00000000 
+04c0 fc			        defb %11111100 
+04c1			 
+04c1			        ; code=96, hex=0x60, ascii="`" 
+04c1 30			        defb %00110000 
+04c2 30			        defb %00110000 
+04c3 10			        defb %00010000 
+04c4 00			        defb %00000000 
+04c5 00			        defb %00000000 
+04c6 00			        defb %00000000 
+04c7 00			        defb %00000000 
+04c8 00			        defb %00000000 
+04c9			 
+04c9			        ; code=97, hex=0x61, ascii="a" 
+04c9 00			        defb %00000000 
+04ca 00			        defb %00000000 
+04cb 38			        defb %00111000 
+04cc 04			        defb %00000100 
+04cd 3c			        defb %00111100 
+04ce 44			        defb %01000100 
+04cf 3c			        defb %00111100 
+04d0 00			        defb %00000000 
+04d1			 
+04d1			        ; code=98, hex=0x62, ascii="b" 
+04d1 40			        defb %01000000 
+04d2 40			        defb %01000000 
+04d3 78			        defb %01111000 
+04d4 44			        defb %01000100 
+04d5 44			        defb %01000100 
+04d6 44			        defb %01000100 
+04d7 78			        defb %01111000 
+04d8 00			        defb %00000000 
+04d9			 
+04d9			        ; code=99, hex=0x63, ascii="c" 
+04d9 00			        defb %00000000 
+04da 00			        defb %00000000 
+04db 38			        defb %00111000 
+04dc 44			        defb %01000100 
+04dd 40			        defb %01000000 
+04de 44			        defb %01000100 
+04df 38			        defb %00111000 
+04e0 00			        defb %00000000 
+04e1			 
+04e1			        ; code=100, hex=0x64, ascii="d" 
+04e1 04			        defb %00000100 
+04e2 04			        defb %00000100 
+04e3 3c			        defb %00111100 
+04e4 44			        defb %01000100 
+04e5 44			        defb %01000100 
+04e6 44			        defb %01000100 
+04e7 3c			        defb %00111100 
+04e8 00			        defb %00000000 
+04e9			 
+04e9			        ; code=101, hex=0x65, ascii="e" 
+04e9 00			        defb %00000000 
+04ea 00			        defb %00000000 
+04eb 38			        defb %00111000 
+04ec 44			        defb %01000100 
+04ed 78			        defb %01111000 
+04ee 40			        defb %01000000 
+04ef 38			        defb %00111000 
+04f0 00			        defb %00000000 
+04f1			 
+04f1			        ; code=102, hex=0x66, ascii="f" 
+04f1 18			        defb %00011000 
+04f2 20			        defb %00100000 
+04f3 20			        defb %00100000 
+04f4 78			        defb %01111000 
+04f5 20			        defb %00100000 
+04f6 20			        defb %00100000 
+04f7 20			        defb %00100000 
+04f8 00			        defb %00000000 
+04f9			 
+04f9			        ; code=103, hex=0x67, ascii="g" 
+04f9 00			        defb %00000000 
+04fa 00			        defb %00000000 
+04fb 3c			        defb %00111100 
+04fc 44			        defb %01000100 
+04fd 44			        defb %01000100 
+04fe 3c			        defb %00111100 
+04ff 04			        defb %00000100 
+0500 38			        defb %00111000 
+0501			 
+0501			        ; code=104, hex=0x68, ascii="h" 
+0501 40			        defb %01000000 
+0502 40			        defb %01000000 
+0503 70			        defb %01110000 
+0504 48			        defb %01001000 
+0505 48			        defb %01001000 
+0506 48			        defb %01001000 
+0507 48			        defb %01001000 
+0508 00			        defb %00000000 
+0509			 
+0509			        ; code=105, hex=0x69, ascii="i" 
+0509 10			        defb %00010000 
+050a 00			        defb %00000000 
+050b 10			        defb %00010000 
+050c 10			        defb %00010000 
+050d 10			        defb %00010000 
+050e 10			        defb %00010000 
+050f 18			        defb %00011000 
+0510 00			        defb %00000000 
+0511			 
+0511			        ; code=106, hex=0x6A, ascii="j" 
+0511 08			        defb %00001000 
+0512 00			        defb %00000000 
+0513 18			        defb %00011000 
+0514 08			        defb %00001000 
+0515 08			        defb %00001000 
+0516 08			        defb %00001000 
+0517 48			        defb %01001000 
+0518 30			        defb %00110000 
+0519			 
+0519			        ; code=107, hex=0x6B, ascii="k" 
+0519 40			        defb %01000000 
+051a 40			        defb %01000000 
+051b 48			        defb %01001000 
+051c 50			        defb %01010000 
+051d 60			        defb %01100000 
+051e 50			        defb %01010000 
+051f 48			        defb %01001000 
+0520 00			        defb %00000000 
+0521			 
+0521			        ; code=108, hex=0x6C, ascii="l" 
+0521 10			        defb %00010000 
+0522 10			        defb %00010000 
+0523 10			        defb %00010000 
+0524 10			        defb %00010000 
+0525 10			        defb %00010000 
+0526 10			        defb %00010000 
+0527 18			        defb %00011000 
+0528 00			        defb %00000000 
+0529			 
+0529			        ; code=109, hex=0x6D, ascii="m" 
+0529 00			        defb %00000000 
+052a 00			        defb %00000000 
+052b 68			        defb %01101000 
+052c 54			        defb %01010100 
+052d 54			        defb %01010100 
+052e 44			        defb %01000100 
+052f 44			        defb %01000100 
+0530 00			        defb %00000000 
+0531			 
+0531			        ; code=110, hex=0x6E, ascii="n" 
+0531 00			        defb %00000000 
+0532 00			        defb %00000000 
+0533 70			        defb %01110000 
+0534 48			        defb %01001000 
+0535 48			        defb %01001000 
+0536 48			        defb %01001000 
+0537 48			        defb %01001000 
+0538 00			        defb %00000000 
+0539			 
+0539			        ; code=111, hex=0x6F, ascii="o" 
+0539 00			        defb %00000000 
+053a 00			        defb %00000000 
+053b 38			        defb %00111000 
+053c 44			        defb %01000100 
+053d 44			        defb %01000100 
+053e 44			        defb %01000100 
+053f 38			        defb %00111000 
+0540 00			        defb %00000000 
+0541			 
+0541			        ; code=112, hex=0x70, ascii="p" 
+0541 00			        defb %00000000 
+0542 00			        defb %00000000 
+0543 78			        defb %01111000 
+0544 44			        defb %01000100 
+0545 44			        defb %01000100 
+0546 44			        defb %01000100 
+0547 78			        defb %01111000 
+0548 40			        defb %01000000 
+0549			 
+0549			        ; code=113, hex=0x71, ascii="q" 
+0549 00			        defb %00000000 
+054a 00			        defb %00000000 
+054b 3c			        defb %00111100 
+054c 44			        defb %01000100 
+054d 44			        defb %01000100 
+054e 44			        defb %01000100 
+054f 3c			        defb %00111100 
+0550 04			        defb %00000100 
+0551			 
+0551			        ; code=114, hex=0x72, ascii="r" 
+0551 00			        defb %00000000 
+0552 00			        defb %00000000 
+0553 58			        defb %01011000 
+0554 24			        defb %00100100 
+0555 20			        defb %00100000 
+0556 20			        defb %00100000 
+0557 70			        defb %01110000 
+0558 00			        defb %00000000 
+0559			 
+0559			        ; code=115, hex=0x73, ascii="s" 
+0559 00			        defb %00000000 
+055a 00			        defb %00000000 
+055b 38			        defb %00111000 
+055c 40			        defb %01000000 
+055d 38			        defb %00111000 
+055e 04			        defb %00000100 
+055f 38			        defb %00111000 
+0560 00			        defb %00000000 
+0561			 
+0561			        ; code=116, hex=0x74, ascii="t" 
+0561 00			        defb %00000000 
+0562 20			        defb %00100000 
+0563 78			        defb %01111000 
+0564 20			        defb %00100000 
+0565 20			        defb %00100000 
+0566 28			        defb %00101000 
+0567 10			        defb %00010000 
+0568 00			        defb %00000000 
+0569			 
+0569			        ; code=117, hex=0x75, ascii="u" 
+0569 00			        defb %00000000 
+056a 00			        defb %00000000 
+056b 48			        defb %01001000 
+056c 48			        defb %01001000 
+056d 48			        defb %01001000 
+056e 58			        defb %01011000 
+056f 28			        defb %00101000 
+0570 00			        defb %00000000 
+0571			 
+0571			        ; code=118, hex=0x76, ascii="v" 
+0571 00			        defb %00000000 
+0572 00			        defb %00000000 
+0573 44			        defb %01000100 
+0574 44			        defb %01000100 
+0575 44			        defb %01000100 
+0576 28			        defb %00101000 
+0577 10			        defb %00010000 
+0578 00			        defb %00000000 
+0579			 
+0579			        ; code=119, hex=0x77, ascii="w" 
+0579 00			        defb %00000000 
+057a 00			        defb %00000000 
+057b 44			        defb %01000100 
+057c 44			        defb %01000100 
+057d 54			        defb %01010100 
+057e 7c			        defb %01111100 
+057f 28			        defb %00101000 
+0580 00			        defb %00000000 
+0581			 
+0581			        ; code=120, hex=0x78, ascii="x" 
+0581 00			        defb %00000000 
+0582 00			        defb %00000000 
+0583 48			        defb %01001000 
+0584 48			        defb %01001000 
+0585 30			        defb %00110000 
+0586 48			        defb %01001000 
+0587 48			        defb %01001000 
+0588 00			        defb %00000000 
+0589			 
+0589			        ; code=121, hex=0x79, ascii="y" 
+0589 00			        defb %00000000 
+058a 00			        defb %00000000 
+058b 48			        defb %01001000 
+058c 48			        defb %01001000 
+058d 48			        defb %01001000 
+058e 38			        defb %00111000 
+058f 10			        defb %00010000 
+0590 60			        defb %01100000 
+0591			 
+0591			        ; code=122, hex=0x7A, ascii="z" 
+0591 00			        defb %00000000 
+0592 00			        defb %00000000 
+0593 78			        defb %01111000 
+0594 08			        defb %00001000 
+0595 30			        defb %00110000 
+0596 40			        defb %01000000 
+0597 78			        defb %01111000 
+0598 00			        defb %00000000 
+0599			 
+0599			        ; code=123, hex=0x7B, ascii="{" 
+0599 18			        defb %00011000 
+059a 20			        defb %00100000 
+059b 20			        defb %00100000 
+059c 60			        defb %01100000 
+059d 20			        defb %00100000 
+059e 20			        defb %00100000 
+059f 18			        defb %00011000 
+05a0 00			        defb %00000000 
+05a1			 
+05a1			        ; code=124, hex=0x7C, ascii="|" 
+05a1 10			        defb %00010000 
+05a2 10			        defb %00010000 
+05a3 10			        defb %00010000 
+05a4 00			        defb %00000000 
+05a5 10			        defb %00010000 
+05a6 10			        defb %00010000 
+05a7 10			        defb %00010000 
+05a8 00			        defb %00000000 
+05a9			 
+05a9			        ; code=125, hex=0x7D, ascii="}" 
+05a9 30			        defb %00110000 
+05aa 08			        defb %00001000 
+05ab 08			        defb %00001000 
+05ac 0c			        defb %00001100 
+05ad 08			        defb %00001000 
+05ae 08			        defb %00001000 
+05af 30			        defb %00110000 
+05b0 00			        defb %00000000 
+05b1			 
+05b1			        ; code=126, hex=0x7E, ascii="~" 
+05b1 28			        defb %00101000 
+05b2 50			        defb %01010000 
+05b3 00			        defb %00000000 
+05b4 00			        defb %00000000 
+05b5 00			        defb %00000000 
+05b6 00			        defb %00000000 
+05b7 00			        defb %00000000 
+05b8 00			        defb %00000000 
+05b9			 
+05b9			        ; code=127, hex=0x7F, ascii="^?" 
+05b9 10			        defb %00010000 
+05ba 38			        defb %00111000 
+05bb 6c			        defb %01101100 
+05bc 44			        defb %01000100 
+05bd 44			        defb %01000100 
+05be 7c			        defb %01111100 
+05bf 00			        defb %00000000 
+05c0 00			        defb %00000000 
+05c1			 
+05c1			        ; code=128, hex=0x80, ascii="!^@" 
+05c1 38			        defb %00111000 
+05c2 44			        defb %01000100 
+05c3 40			        defb %01000000 
+05c4 40			        defb %01000000 
+05c5 44			        defb %01000100 
+05c6 38			        defb %00111000 
+05c7 10			        defb %00010000 
+05c8 30			        defb %00110000 
+05c9			 
+05c9			        ; code=129, hex=0x81, ascii="!^A" 
+05c9 48			        defb %01001000 
+05ca 00			        defb %00000000 
+05cb 48			        defb %01001000 
+05cc 48			        defb %01001000 
+05cd 48			        defb %01001000 
+05ce 58			        defb %01011000 
+05cf 28			        defb %00101000 
+05d0 00			        defb %00000000 
+05d1			 
+05d1			        ; code=130, hex=0x82, ascii="!^B" 
+05d1 0c			        defb %00001100 
+05d2 00			        defb %00000000 
+05d3 38			        defb %00111000 
+05d4 44			        defb %01000100 
+05d5 78			        defb %01111000 
+05d6 40			        defb %01000000 
+05d7 38			        defb %00111000 
+05d8 00			        defb %00000000 
+05d9			 
+05d9			        ; code=131, hex=0x83, ascii="!^C" 
+05d9 38			        defb %00111000 
+05da 00			        defb %00000000 
+05db 38			        defb %00111000 
+05dc 04			        defb %00000100 
+05dd 3c			        defb %00111100 
+05de 44			        defb %01000100 
+05df 3c			        defb %00111100 
+05e0 00			        defb %00000000 
+05e1			 
+05e1			        ; code=132, hex=0x84, ascii="!^D" 
+05e1 28			        defb %00101000 
+05e2 00			        defb %00000000 
+05e3 38			        defb %00111000 
+05e4 04			        defb %00000100 
+05e5 3c			        defb %00111100 
+05e6 44			        defb %01000100 
+05e7 3c			        defb %00111100 
+05e8 00			        defb %00000000 
+05e9			 
+05e9			        ; code=133, hex=0x85, ascii="!^E" 
+05e9 30			        defb %00110000 
+05ea 00			        defb %00000000 
+05eb 38			        defb %00111000 
+05ec 04			        defb %00000100 
+05ed 3c			        defb %00111100 
+05ee 44			        defb %01000100 
+05ef 3c			        defb %00111100 
+05f0 00			        defb %00000000 
+05f1			 
+05f1			        ; code=134, hex=0x86, ascii="!^F" 
+05f1 38			        defb %00111000 
+05f2 28			        defb %00101000 
+05f3 38			        defb %00111000 
+05f4 04			        defb %00000100 
+05f5 3c			        defb %00111100 
+05f6 44			        defb %01000100 
+05f7 3c			        defb %00111100 
+05f8 00			        defb %00000000 
+05f9			 
+05f9			        ; code=135, hex=0x87, ascii="!^G" 
+05f9 00			        defb %00000000 
+05fa 38			        defb %00111000 
+05fb 44			        defb %01000100 
+05fc 40			        defb %01000000 
+05fd 44			        defb %01000100 
+05fe 38			        defb %00111000 
+05ff 10			        defb %00010000 
+0600 30			        defb %00110000 
+0601			 
+0601			        ; code=136, hex=0x88, ascii="!^H" 
+0601 38			        defb %00111000 
+0602 00			        defb %00000000 
+0603 38			        defb %00111000 
+0604 44			        defb %01000100 
+0605 78			        defb %01111000 
+0606 40			        defb %01000000 
+0607 38			        defb %00111000 
+0608 00			        defb %00000000 
+0609			 
+0609			        ; code=137, hex=0x89, ascii="!^I" 
+0609 28			        defb %00101000 
+060a 00			        defb %00000000 
+060b 38			        defb %00111000 
+060c 44			        defb %01000100 
+060d 78			        defb %01111000 
+060e 40			        defb %01000000 
+060f 38			        defb %00111000 
+0610 00			        defb %00000000 
+0611			 
+0611			        ; code=138, hex=0x8A, ascii="!^J" 
+0611 30			        defb %00110000 
+0612 00			        defb %00000000 
+0613 38			        defb %00111000 
+0614 44			        defb %01000100 
+0615 78			        defb %01111000 
+0616 40			        defb %01000000 
+0617 38			        defb %00111000 
+0618 00			        defb %00000000 
+0619			 
+0619			        ; code=139, hex=0x8B, ascii="!^K" 
+0619 28			        defb %00101000 
+061a 00			        defb %00000000 
+061b 10			        defb %00010000 
+061c 10			        defb %00010000 
+061d 10			        defb %00010000 
+061e 10			        defb %00010000 
+061f 18			        defb %00011000 
+0620 00			        defb %00000000 
+0621			 
+0621			        ; code=140, hex=0x8C, ascii="!^L" 
+0621 10			        defb %00010000 
+0622 28			        defb %00101000 
+0623 00			        defb %00000000 
+0624 10			        defb %00010000 
+0625 10			        defb %00010000 
+0626 10			        defb %00010000 
+0627 18			        defb %00011000 
+0628 00			        defb %00000000 
+0629			 
+0629			        ; code=141, hex=0x8D, ascii="!^M" 
+0629 20			        defb %00100000 
+062a 00			        defb %00000000 
+062b 10			        defb %00010000 
+062c 10			        defb %00010000 
+062d 10			        defb %00010000 
+062e 10			        defb %00010000 
+062f 18			        defb %00011000 
+0630 00			        defb %00000000 
+0631			 
+0631			        ; code=142, hex=0x8E, ascii="!^N" 
+0631 28			        defb %00101000 
+0632 00			        defb %00000000 
+0633 10			        defb %00010000 
+0634 28			        defb %00101000 
+0635 44			        defb %01000100 
+0636 7c			        defb %01111100 
+0637 44			        defb %01000100 
+0638 00			        defb %00000000 
+0639			 
+0639			        ; code=143, hex=0x8F, ascii="!^O" 
+0639 38			        defb %00111000 
+063a 28			        defb %00101000 
+063b 38			        defb %00111000 
+063c 6c			        defb %01101100 
+063d 44			        defb %01000100 
+063e 7c			        defb %01111100 
+063f 44			        defb %01000100 
+0640 00			        defb %00000000 
+0641			 
+0641			        ; code=144, hex=0x90, ascii="!^P" 
+0641 0c			        defb %00001100 
+0642 00			        defb %00000000 
+0643 7c			        defb %01111100 
+0644 40			        defb %01000000 
+0645 78			        defb %01111000 
+0646 40			        defb %01000000 
+0647 7c			        defb %01111100 
+0648 00			        defb %00000000 
+0649			 
+0649			        ; code=145, hex=0x91, ascii="!^Q" 
+0649 00			        defb %00000000 
+064a 00			        defb %00000000 
+064b 78			        defb %01111000 
+064c 14			        defb %00010100 
+064d 7c			        defb %01111100 
+064e 50			        defb %01010000 
+064f 3c			        defb %00111100 
+0650 00			        defb %00000000 
+0651			 
+0651			        ; code=146, hex=0x92, ascii="!^R" 
+0651 3c			        defb %00111100 
+0652 50			        defb %01010000 
+0653 50			        defb %01010000 
+0654 7c			        defb %01111100 
+0655 50			        defb %01010000 
+0656 50			        defb %01010000 
+0657 5c			        defb %01011100 
+0658 00			        defb %00000000 
+0659			 
+0659			        ; code=147, hex=0x93, ascii="!^S" 
+0659 38			        defb %00111000 
+065a 00			        defb %00000000 
+065b 30			        defb %00110000 
+065c 48			        defb %01001000 
+065d 48			        defb %01001000 
+065e 48			        defb %01001000 
+065f 30			        defb %00110000 
+0660 00			        defb %00000000 
+0661			 
+0661			        ; code=148, hex=0x94, ascii="!^T" 
+0661 28			        defb %00101000 
+0662 00			        defb %00000000 
+0663 30			        defb %00110000 
+0664 48			        defb %01001000 
+0665 48			        defb %01001000 
+0666 48			        defb %01001000 
+0667 30			        defb %00110000 
+0668 00			        defb %00000000 
+0669			 
+0669			        ; code=149, hex=0x95, ascii="!^U" 
+0669 60			        defb %01100000 
+066a 00			        defb %00000000 
+066b 30			        defb %00110000 
+066c 48			        defb %01001000 
+066d 48			        defb %01001000 
+066e 48			        defb %01001000 
+066f 30			        defb %00110000 
+0670 00			        defb %00000000 
+0671			 
+0671			        ; code=150, hex=0x96, ascii="!^V" 
+0671 38			        defb %00111000 
+0672 00			        defb %00000000 
+0673 48			        defb %01001000 
+0674 48			        defb %01001000 
+0675 48			        defb %01001000 
+0676 58			        defb %01011000 
+0677 28			        defb %00101000 
+0678 00			        defb %00000000 
+0679			 
+0679			        ; code=151, hex=0x97, ascii="!^W" 
+0679 60			        defb %01100000 
+067a 00			        defb %00000000 
+067b 48			        defb %01001000 
+067c 48			        defb %01001000 
+067d 48			        defb %01001000 
+067e 58			        defb %01011000 
+067f 28			        defb %00101000 
+0680 00			        defb %00000000 
+0681			 
+0681			        ; code=152, hex=0x98, ascii="!^X" 
+0681 28			        defb %00101000 
+0682 00			        defb %00000000 
+0683 48			        defb %01001000 
+0684 48			        defb %01001000 
+0685 48			        defb %01001000 
+0686 38			        defb %00111000 
+0687 10			        defb %00010000 
+0688 60			        defb %01100000 
+0689			 
+0689			        ; code=153, hex=0x99, ascii="!^Y" 
+0689 48			        defb %01001000 
+068a 30			        defb %00110000 
+068b 48			        defb %01001000 
+068c 48			        defb %01001000 
+068d 48			        defb %01001000 
+068e 48			        defb %01001000 
+068f 30			        defb %00110000 
+0690 00			        defb %00000000 
+0691			 
+0691			        ; code=154, hex=0x9A, ascii="!^Z" 
+0691 28			        defb %00101000 
+0692 00			        defb %00000000 
+0693 48			        defb %01001000 
+0694 48			        defb %01001000 
+0695 48			        defb %01001000 
+0696 48			        defb %01001000 
+0697 30			        defb %00110000 
+0698 00			        defb %00000000 
+0699			 
+0699			        ; code=155, hex=0x9B, ascii="!^[" 
+0699 00			        defb %00000000 
+069a 10			        defb %00010000 
+069b 38			        defb %00111000 
+069c 40			        defb %01000000 
+069d 40			        defb %01000000 
+069e 38			        defb %00111000 
+069f 10			        defb %00010000 
+06a0 00			        defb %00000000 
+06a1			 
+06a1			        ; code=156, hex=0x9C, ascii="!^\" 
+06a1 18			        defb %00011000 
+06a2 24			        defb %00100100 
+06a3 20			        defb %00100000 
+06a4 78			        defb %01111000 
+06a5 20			        defb %00100000 
+06a6 24			        defb %00100100 
+06a7 5c			        defb %01011100 
+06a8 00			        defb %00000000 
+06a9			 
+06a9			        ; code=157, hex=0x9D, ascii="!^]" 
+06a9 44			        defb %01000100 
+06aa 28			        defb %00101000 
+06ab 10			        defb %00010000 
+06ac 7c			        defb %01111100 
+06ad 10			        defb %00010000 
+06ae 7c			        defb %01111100 
+06af 10			        defb %00010000 
+06b0 00			        defb %00000000 
+06b1			 
+06b1			        ; code=158, hex=0x9E, ascii="!^^" 
+06b1 60			        defb %01100000 
+06b2 50			        defb %01010000 
+06b3 50			        defb %01010000 
+06b4 68			        defb %01101000 
+06b5 5c			        defb %01011100 
+06b6 48			        defb %01001000 
+06b7 48			        defb %01001000 
+06b8 00			        defb %00000000 
+06b9			 
+06b9			        ; code=159, hex=0x9F, ascii="!^_" 
+06b9 08			        defb %00001000 
+06ba 14			        defb %00010100 
+06bb 10			        defb %00010000 
+06bc 38			        defb %00111000 
+06bd 10			        defb %00010000 
+06be 10			        defb %00010000 
+06bf 50			        defb %01010000 
+06c0 20			        defb %00100000 
+06c1			 
+06c1			        ; code=160, hex=0xA0, ascii="! " 
+06c1 18			        defb %00011000 
+06c2 00			        defb %00000000 
+06c3 38			        defb %00111000 
+06c4 04			        defb %00000100 
+06c5 3c			        defb %00111100 
+06c6 44			        defb %01000100 
+06c7 3c			        defb %00111100 
+06c8 00			        defb %00000000 
+06c9			 
+06c9			        ; code=161, hex=0xA1, ascii="!!" 
+06c9 18			        defb %00011000 
+06ca 00			        defb %00000000 
+06cb 10			        defb %00010000 
+06cc 10			        defb %00010000 
+06cd 10			        defb %00010000 
+06ce 10			        defb %00010000 
+06cf 18			        defb %00011000 
+06d0 00			        defb %00000000 
+06d1			 
+06d1			        ; code=162, hex=0xA2, ascii="!"" 
+06d1 18			        defb %00011000 
+06d2 00			        defb %00000000 
+06d3 30			        defb %00110000 
+06d4 48			        defb %01001000 
+06d5 48			        defb %01001000 
+06d6 48			        defb %01001000 
+06d7 30			        defb %00110000 
+06d8 00			        defb %00000000 
+06d9			 
+06d9			        ; code=163, hex=0xA3, ascii="!#" 
+06d9 18			        defb %00011000 
+06da 00			        defb %00000000 
+06db 48			        defb %01001000 
+06dc 48			        defb %01001000 
+06dd 48			        defb %01001000 
+06de 58			        defb %01011000 
+06df 28			        defb %00101000 
+06e0 00			        defb %00000000 
+06e1			 
+06e1			        ; code=164, hex=0xA4, ascii="!$" 
+06e1 28			        defb %00101000 
+06e2 50			        defb %01010000 
+06e3 00			        defb %00000000 
+06e4 70			        defb %01110000 
+06e5 48			        defb %01001000 
+06e6 48			        defb %01001000 
+06e7 48			        defb %01001000 
+06e8 00			        defb %00000000 
+06e9			 
+06e9			        ; code=165, hex=0xA5, ascii="!%" 
+06e9 28			        defb %00101000 
+06ea 50			        defb %01010000 
+06eb 00			        defb %00000000 
+06ec 48			        defb %01001000 
+06ed 68			        defb %01101000 
+06ee 58			        defb %01011000 
+06ef 48			        defb %01001000 
+06f0 00			        defb %00000000 
+06f1			 
+06f1			        ; code=166, hex=0xA6, ascii="!&" 
+06f1 38			        defb %00111000 
+06f2 04			        defb %00000100 
+06f3 3c			        defb %00111100 
+06f4 44			        defb %01000100 
+06f5 3c			        defb %00111100 
+06f6 00			        defb %00000000 
+06f7 3c			        defb %00111100 
+06f8 00			        defb %00000000 
+06f9			 
+06f9			        ; code=167, hex=0xA7, ascii="!'" 
+06f9 30			        defb %00110000 
+06fa 48			        defb %01001000 
+06fb 48			        defb %01001000 
+06fc 48			        defb %01001000 
+06fd 30			        defb %00110000 
+06fe 00			        defb %00000000 
+06ff 78			        defb %01111000 
+0700 00			        defb %00000000 
+0701			 
+0701			        ; code=168, hex=0xA8, ascii="!(" 
+0701 10			        defb %00010000 
+0702 00			        defb %00000000 
+0703 10			        defb %00010000 
+0704 30			        defb %00110000 
+0705 40			        defb %01000000 
+0706 44			        defb %01000100 
+0707 38			        defb %00111000 
+0708 00			        defb %00000000 
+0709			 
+0709			        ; code=169, hex=0xA9, ascii="!)" 
+0709 00			        defb %00000000 
+070a 00			        defb %00000000 
+070b 7c			        defb %01111100 
+070c 40			        defb %01000000 
+070d 40			        defb %01000000 
+070e 40			        defb %01000000 
+070f 00			        defb %00000000 
+0710 00			        defb %00000000 
+0711			 
+0711			        ; code=170, hex=0xAA, ascii="!*" 
+0711 00			        defb %00000000 
+0712 00			        defb %00000000 
+0713 fc			        defb %11111100 
+0714 04			        defb %00000100 
+0715 04			        defb %00000100 
+0716 00			        defb %00000000 
+0717 00			        defb %00000000 
+0718 00			        defb %00000000 
+0719			 
+0719			        ; code=171, hex=0xAB, ascii="!+" 
+0719 40			        defb %01000000 
+071a 48			        defb %01001000 
+071b 50			        defb %01010000 
+071c 38			        defb %00111000 
+071d 44			        defb %01000100 
+071e 08			        defb %00001000 
+071f 1c			        defb %00011100 
+0720 00			        defb %00000000 
+0721			 
+0721			        ; code=172, hex=0xAC, ascii="!," 
+0721 40			        defb %01000000 
+0722 48			        defb %01001000 
+0723 50			        defb %01010000 
+0724 2c			        defb %00101100 
+0725 54			        defb %01010100 
+0726 1c			        defb %00011100 
+0727 04			        defb %00000100 
+0728 00			        defb %00000000 
+0729			 
+0729			        ; code=173, hex=0xAD, ascii="!-" 
+0729 10			        defb %00010000 
+072a 00			        defb %00000000 
+072b 10			        defb %00010000 
+072c 10			        defb %00010000 
+072d 38			        defb %00111000 
+072e 38			        defb %00111000 
+072f 10			        defb %00010000 
+0730 00			        defb %00000000 
+0731			 
+0731			        ; code=174, hex=0xAE, ascii="!." 
+0731 00			        defb %00000000 
+0732 00			        defb %00000000 
+0733 24			        defb %00100100 
+0734 48			        defb %01001000 
+0735 24			        defb %00100100 
+0736 00			        defb %00000000 
+0737 00			        defb %00000000 
+0738 00			        defb %00000000 
+0739			 
+0739			        ; code=175, hex=0xAF, ascii="!/" 
+0739 00			        defb %00000000 
+073a 00			        defb %00000000 
+073b 48			        defb %01001000 
+073c 24			        defb %00100100 
+073d 48			        defb %01001000 
+073e 00			        defb %00000000 
+073f 00			        defb %00000000 
+0740 00			        defb %00000000 
+0741			 
+0741			        ; code=176, hex=0xB0, ascii="!0" 
+0741 54			        defb %01010100 
+0742 00			        defb %00000000 
+0743 a8			        defb %10101000 
+0744 00			        defb %00000000 
+0745 54			        defb %01010100 
+0746 00			        defb %00000000 
+0747 a8			        defb %10101000 
+0748 00			        defb %00000000 
+0749			 
+0749			        ; code=177, hex=0xB1, ascii="!1" 
+0749 54			        defb %01010100 
+074a a8			        defb %10101000 
+074b 54			        defb %01010100 
+074c a8			        defb %10101000 
+074d 54			        defb %01010100 
+074e a8			        defb %10101000 
+074f 54			        defb %01010100 
+0750 a8			        defb %10101000 
+0751			 
+0751			        ; code=178, hex=0xB2, ascii="!2" 
+0751 a8			        defb %10101000 
+0752 fc			        defb %11111100 
+0753 54			        defb %01010100 
+0754 fc			        defb %11111100 
+0755 a8			        defb %10101000 
+0756 fc			        defb %11111100 
+0757 54			        defb %01010100 
+0758 fc			        defb %11111100 
+0759			 
+0759			        ; code=179, hex=0xB3, ascii="!3" 
+0759 10			        defb %00010000 
+075a 10			        defb %00010000 
+075b 10			        defb %00010000 
+075c 10			        defb %00010000 
+075d 10			        defb %00010000 
+075e 10			        defb %00010000 
+075f 10			        defb %00010000 
+0760 10			        defb %00010000 
+0761			 
+0761			        ; code=180, hex=0xB4, ascii="!4" 
+0761 10			        defb %00010000 
+0762 10			        defb %00010000 
+0763 10			        defb %00010000 
+0764 f0			        defb %11110000 
+0765 10			        defb %00010000 
+0766 10			        defb %00010000 
+0767 10			        defb %00010000 
+0768 10			        defb %00010000 
+0769			 
+0769			        ; code=181, hex=0xB5, ascii="!5" 
+0769 10			        defb %00010000 
+076a f0			        defb %11110000 
+076b 10			        defb %00010000 
+076c f0			        defb %11110000 
+076d 10			        defb %00010000 
+076e 10			        defb %00010000 
+076f 10			        defb %00010000 
+0770 10			        defb %00010000 
+0771			 
+0771			        ; code=182, hex=0xB6, ascii="!6" 
+0771 50			        defb %01010000 
+0772 50			        defb %01010000 
+0773 50			        defb %01010000 
+0774 d0			        defb %11010000 
+0775 50			        defb %01010000 
+0776 50			        defb %01010000 
+0777 50			        defb %01010000 
+0778 50			        defb %01010000 
+0779			 
+0779			        ; code=183, hex=0xB7, ascii="!7" 
+0779 00			        defb %00000000 
+077a 00			        defb %00000000 
+077b 00			        defb %00000000 
+077c f0			        defb %11110000 
+077d 50			        defb %01010000 
+077e 50			        defb %01010000 
+077f 50			        defb %01010000 
+0780 50			        defb %01010000 
+0781			 
+0781			        ; code=184, hex=0xB8, ascii="!8" 
+0781 00			        defb %00000000 
+0782 f0			        defb %11110000 
+0783 10			        defb %00010000 
+0784 f0			        defb %11110000 
+0785 10			        defb %00010000 
+0786 10			        defb %00010000 
+0787 10			        defb %00010000 
+0788 10			        defb %00010000 
+0789			 
+0789			        ; code=185, hex=0xB9, ascii="!9" 
+0789 50			        defb %01010000 
+078a d0			        defb %11010000 
+078b 10			        defb %00010000 
+078c d0			        defb %11010000 
+078d 50			        defb %01010000 
+078e 50			        defb %01010000 
+078f 50			        defb %01010000 
+0790 50			        defb %01010000 
+0791			 
+0791			        ; code=186, hex=0xBA, ascii="!:" 
+0791 50			        defb %01010000 
+0792 50			        defb %01010000 
+0793 50			        defb %01010000 
+0794 50			        defb %01010000 
+0795 50			        defb %01010000 
+0796 50			        defb %01010000 
+0797 50			        defb %01010000 
+0798 50			        defb %01010000 
+0799			 
+0799			        ; code=187, hex=0xBB, ascii="!;" 
+0799 00			        defb %00000000 
+079a f0			        defb %11110000 
+079b 10			        defb %00010000 
+079c d0			        defb %11010000 
+079d 50			        defb %01010000 
+079e 50			        defb %01010000 
+079f 50			        defb %01010000 
+07a0 50			        defb %01010000 
+07a1			 
+07a1			        ; code=188, hex=0xBC, ascii="!<" 
+07a1 50			        defb %01010000 
+07a2 d0			        defb %11010000 
+07a3 10			        defb %00010000 
+07a4 f0			        defb %11110000 
+07a5 00			        defb %00000000 
+07a6 00			        defb %00000000 
+07a7 00			        defb %00000000 
+07a8 00			        defb %00000000 
+07a9			 
+07a9			        ; code=189, hex=0xBD, ascii="!=" 
+07a9 50			        defb %01010000 
+07aa 50			        defb %01010000 
+07ab 50			        defb %01010000 
+07ac f0			        defb %11110000 
+07ad 00			        defb %00000000 
+07ae 00			        defb %00000000 
+07af 00			        defb %00000000 
+07b0 00			        defb %00000000 
+07b1			 
+07b1			        ; code=190, hex=0xBE, ascii="!>" 
+07b1 10			        defb %00010000 
+07b2 f0			        defb %11110000 
+07b3 10			        defb %00010000 
+07b4 f0			        defb %11110000 
+07b5 00			        defb %00000000 
+07b6 00			        defb %00000000 
+07b7 00			        defb %00000000 
+07b8 00			        defb %00000000 
+07b9			 
+07b9			        ; code=191, hex=0xBF, ascii="!?" 
+07b9 00			        defb %00000000 
+07ba 00			        defb %00000000 
+07bb 00			        defb %00000000 
+07bc f0			        defb %11110000 
+07bd 10			        defb %00010000 
+07be 10			        defb %00010000 
+07bf 10			        defb %00010000 
+07c0 10			        defb %00010000 
+07c1			 
+07c1			        ; code=192, hex=0xC0, ascii="!@" 
+07c1 10			        defb %00010000 
+07c2 10			        defb %00010000 
+07c3 10			        defb %00010000 
+07c4 1c			        defb %00011100 
+07c5 00			        defb %00000000 
+07c6 00			        defb %00000000 
+07c7 00			        defb %00000000 
+07c8 00			        defb %00000000 
+07c9			 
+07c9			        ; code=193, hex=0xC1, ascii="!A" 
+07c9 10			        defb %00010000 
+07ca 10			        defb %00010000 
+07cb 10			        defb %00010000 
+07cc fc			        defb %11111100 
+07cd 00			        defb %00000000 
+07ce 00			        defb %00000000 
+07cf 00			        defb %00000000 
+07d0 00			        defb %00000000 
+07d1			 
+07d1			        ; code=194, hex=0xC2, ascii="!B" 
+07d1 00			        defb %00000000 
+07d2 00			        defb %00000000 
+07d3 00			        defb %00000000 
+07d4 fc			        defb %11111100 
+07d5 10			        defb %00010000 
+07d6 10			        defb %00010000 
+07d7 10			        defb %00010000 
+07d8 10			        defb %00010000 
+07d9			 
+07d9			        ; code=195, hex=0xC3, ascii="!C" 
+07d9 10			        defb %00010000 
+07da 10			        defb %00010000 
+07db 10			        defb %00010000 
+07dc 1c			        defb %00011100 
+07dd 10			        defb %00010000 
+07de 10			        defb %00010000 
+07df 10			        defb %00010000 
+07e0 10			        defb %00010000 
+07e1			 
+07e1			        ; code=196, hex=0xC4, ascii="!D" 
+07e1 00			        defb %00000000 
+07e2 00			        defb %00000000 
+07e3 00			        defb %00000000 
+07e4 fc			        defb %11111100 
+07e5 00			        defb %00000000 
+07e6 00			        defb %00000000 
+07e7 00			        defb %00000000 
+07e8 00			        defb %00000000 
+07e9			 
+07e9			        ; code=197, hex=0xC5, ascii="!E" 
+07e9 10			        defb %00010000 
+07ea 10			        defb %00010000 
+07eb 10			        defb %00010000 
+07ec fc			        defb %11111100 
+07ed 10			        defb %00010000 
+07ee 10			        defb %00010000 
+07ef 10			        defb %00010000 
+07f0 10			        defb %00010000 
+07f1			 
+07f1			        ; code=198, hex=0xC6, ascii="!F" 
+07f1 10			        defb %00010000 
+07f2 1c			        defb %00011100 
+07f3 10			        defb %00010000 
+07f4 1c			        defb %00011100 
+07f5 10			        defb %00010000 
+07f6 10			        defb %00010000 
+07f7 10			        defb %00010000 
+07f8 10			        defb %00010000 
+07f9			 
+07f9			        ; code=199, hex=0xC7, ascii="!G" 
+07f9 50			        defb %01010000 
+07fa 50			        defb %01010000 
+07fb 50			        defb %01010000 
+07fc 5c			        defb %01011100 
+07fd 50			        defb %01010000 
+07fe 50			        defb %01010000 
+07ff 50			        defb %01010000 
+0800 50			        defb %01010000 
+0801			 
+0801			        ; code=200, hex=0xC8, ascii="!H" 
+0801 50			        defb %01010000 
+0802 5c			        defb %01011100 
+0803 40			        defb %01000000 
+0804 7c			        defb %01111100 
+0805 00			        defb %00000000 
+0806 00			        defb %00000000 
+0807 00			        defb %00000000 
+0808 00			        defb %00000000 
+0809			 
+0809			        ; code=201, hex=0xC9, ascii="!I" 
+0809 00			        defb %00000000 
+080a 7c			        defb %01111100 
+080b 40			        defb %01000000 
+080c 5c			        defb %01011100 
+080d 50			        defb %01010000 
+080e 50			        defb %01010000 
+080f 50			        defb %01010000 
+0810 50			        defb %01010000 
+0811			 
+0811			        ; code=202, hex=0xCA, ascii="!J" 
+0811 50			        defb %01010000 
+0812 dc			        defb %11011100 
+0813 00			        defb %00000000 
+0814 fc			        defb %11111100 
+0815 00			        defb %00000000 
+0816 00			        defb %00000000 
+0817 00			        defb %00000000 
+0818 00			        defb %00000000 
+0819			 
+0819			        ; code=203, hex=0xCB, ascii="!K" 
+0819 00			        defb %00000000 
+081a fc			        defb %11111100 
+081b 00			        defb %00000000 
+081c dc			        defb %11011100 
+081d 50			        defb %01010000 
+081e 50			        defb %01010000 
+081f 50			        defb %01010000 
+0820 50			        defb %01010000 
+0821			 
+0821			        ; code=204, hex=0xCC, ascii="!L" 
+0821 50			        defb %01010000 
+0822 5c			        defb %01011100 
+0823 40			        defb %01000000 
+0824 5c			        defb %01011100 
+0825 50			        defb %01010000 
+0826 50			        defb %01010000 
+0827 50			        defb %01010000 
+0828 50			        defb %01010000 
+0829			 
+0829			        ; code=205, hex=0xCD, ascii="!M" 
+0829 00			        defb %00000000 
+082a fc			        defb %11111100 
+082b 00			        defb %00000000 
+082c fc			        defb %11111100 
+082d 00			        defb %00000000 
+082e 00			        defb %00000000 
+082f 00			        defb %00000000 
+0830 00			        defb %00000000 
+0831			 
+0831			        ; code=206, hex=0xCE, ascii="!N" 
+0831 50			        defb %01010000 
+0832 dc			        defb %11011100 
+0833 00			        defb %00000000 
+0834 dc			        defb %11011100 
+0835 50			        defb %01010000 
+0836 50			        defb %01010000 
+0837 50			        defb %01010000 
+0838 50			        defb %01010000 
+0839			 
+0839			        ; code=207, hex=0xCF, ascii="!O" 
+0839 10			        defb %00010000 
+083a fc			        defb %11111100 
+083b 00			        defb %00000000 
+083c fc			        defb %11111100 
+083d 00			        defb %00000000 
+083e 00			        defb %00000000 
+083f 00			        defb %00000000 
+0840 00			        defb %00000000 
+0841			 
+0841			        ; code=208, hex=0xD0, ascii="!P" 
+0841 50			        defb %01010000 
+0842 50			        defb %01010000 
+0843 50			        defb %01010000 
+0844 fc			        defb %11111100 
+0845 00			        defb %00000000 
+0846 00			        defb %00000000 
+0847 00			        defb %00000000 
+0848 00			        defb %00000000 
+0849			 
+0849			        ; code=209, hex=0xD1, ascii="!Q" 
+0849 00			        defb %00000000 
+084a fc			        defb %11111100 
+084b 00			        defb %00000000 
+084c fc			        defb %11111100 
+084d 10			        defb %00010000 
+084e 10			        defb %00010000 
+084f 10			        defb %00010000 
+0850 10			        defb %00010000 
+0851			 
+0851			        ; code=210, hex=0xD2, ascii="!R" 
+0851 00			        defb %00000000 
+0852 00			        defb %00000000 
+0853 00			        defb %00000000 
+0854 fc			        defb %11111100 
+0855 50			        defb %01010000 
+0856 50			        defb %01010000 
+0857 50			        defb %01010000 
+0858 50			        defb %01010000 
+0859			 
+0859			        ; code=211, hex=0xD3, ascii="!S" 
+0859 50			        defb %01010000 
+085a 50			        defb %01010000 
+085b 50			        defb %01010000 
+085c 7c			        defb %01111100 
+085d 00			        defb %00000000 
+085e 00			        defb %00000000 
+085f 00			        defb %00000000 
+0860 00			        defb %00000000 
+0861			 
+0861			        ; code=212, hex=0xD4, ascii="!T" 
+0861 10			        defb %00010000 
+0862 1c			        defb %00011100 
+0863 10			        defb %00010000 
+0864 1c			        defb %00011100 
+0865 00			        defb %00000000 
+0866 00			        defb %00000000 
+0867 00			        defb %00000000 
+0868 00			        defb %00000000 
+0869			 
+0869			        ; code=213, hex=0xD5, ascii="!U" 
+0869 00			        defb %00000000 
+086a 1c			        defb %00011100 
+086b 10			        defb %00010000 
+086c 1c			        defb %00011100 
+086d 10			        defb %00010000 
+086e 10			        defb %00010000 
+086f 10			        defb %00010000 
+0870 10			        defb %00010000 
+0871			 
+0871			        ; code=214, hex=0xD6, ascii="!V" 
+0871 00			        defb %00000000 
+0872 00			        defb %00000000 
+0873 00			        defb %00000000 
+0874 7c			        defb %01111100 
+0875 50			        defb %01010000 
+0876 50			        defb %01010000 
+0877 50			        defb %01010000 
+0878 50			        defb %01010000 
+0879			 
+0879			        ; code=215, hex=0xD7, ascii="!W" 
+0879 50			        defb %01010000 
+087a 50			        defb %01010000 
+087b 50			        defb %01010000 
+087c dc			        defb %11011100 
+087d 50			        defb %01010000 
+087e 50			        defb %01010000 
+087f 50			        defb %01010000 
+0880 50			        defb %01010000 
+0881			 
+0881			        ; code=216, hex=0xD8, ascii="!X" 
+0881 10			        defb %00010000 
+0882 fc			        defb %11111100 
+0883 00			        defb %00000000 
+0884 fc			        defb %11111100 
+0885 10			        defb %00010000 
+0886 10			        defb %00010000 
+0887 10			        defb %00010000 
+0888 10			        defb %00010000 
+0889			 
+0889			        ; code=217, hex=0xD9, ascii="!Y" 
+0889 10			        defb %00010000 
+088a 10			        defb %00010000 
+088b 10			        defb %00010000 
+088c f0			        defb %11110000 
+088d 00			        defb %00000000 
+088e 00			        defb %00000000 
+088f 00			        defb %00000000 
+0890 00			        defb %00000000 
+0891			 
+0891			        ; code=218, hex=0xDA, ascii="!Z" 
+0891 00			        defb %00000000 
+0892 00			        defb %00000000 
+0893 00			        defb %00000000 
+0894 1c			        defb %00011100 
+0895 10			        defb %00010000 
+0896 10			        defb %00010000 
+0897 10			        defb %00010000 
+0898 10			        defb %00010000 
+0899			 
+0899			        ; code=219, hex=0xDB, ascii="![" 
+0899 fc			        defb %11111100 
+089a fc			        defb %11111100 
+089b fc			        defb %11111100 
+089c fc			        defb %11111100 
+089d fc			        defb %11111100 
+089e fc			        defb %11111100 
+089f fc			        defb %11111100 
+08a0 fc			        defb %11111100 
+08a1			 
+08a1			        ; code=220, hex=0xDC, ascii="!\" 
+08a1 00			        defb %00000000 
+08a2 00			        defb %00000000 
+08a3 00			        defb %00000000 
+08a4 00			        defb %00000000 
+08a5 fc			        defb %11111100 
+08a6 fc			        defb %11111100 
+08a7 fc			        defb %11111100 
+08a8 fc			        defb %11111100 
+08a9			 
+08a9			        ; code=221, hex=0xDD, ascii="!]" 
+08a9 e0			        defb %11100000 
+08aa e0			        defb %11100000 
+08ab e0			        defb %11100000 
+08ac e0			        defb %11100000 
+08ad e0			        defb %11100000 
+08ae e0			        defb %11100000 
+08af e0			        defb %11100000 
+08b0 e0			        defb %11100000 
+08b1			 
+08b1			        ; code=222, hex=0xDE, ascii="!^" 
+08b1 1c			        defb %00011100 
+08b2 1c			        defb %00011100 
+08b3 1c			        defb %00011100 
+08b4 1c			        defb %00011100 
+08b5 1c			        defb %00011100 
+08b6 1c			        defb %00011100 
+08b7 1c			        defb %00011100 
+08b8 1c			        defb %00011100 
+08b9			 
+08b9			        ; code=223, hex=0xDF, ascii="!_" 
+08b9 fc			        defb %11111100 
+08ba fc			        defb %11111100 
+08bb fc			        defb %11111100 
+08bc fc			        defb %11111100 
+08bd 00			        defb %00000000 
+08be 00			        defb %00000000 
+08bf 00			        defb %00000000 
+08c0 00			        defb %00000000 
+08c1			 
+08c1			        ; code=224, hex=0xE0, ascii="!`" 
+08c1 00			        defb %00000000 
+08c2 00			        defb %00000000 
+08c3 34			        defb %00110100 
+08c4 48			        defb %01001000 
+08c5 48			        defb %01001000 
+08c6 34			        defb %00110100 
+08c7 00			        defb %00000000 
+08c8 00			        defb %00000000 
+08c9			 
+08c9			        ; code=225, hex=0xE1, ascii="!a" 
+08c9 00			        defb %00000000 
+08ca 70			        defb %01110000 
+08cb 48			        defb %01001000 
+08cc 70			        defb %01110000 
+08cd 48			        defb %01001000 
+08ce 48			        defb %01001000 
+08cf 70			        defb %01110000 
+08d0 40			        defb %01000000 
+08d1			 
+08d1			        ; code=226, hex=0xE2, ascii="!b" 
+08d1 78			        defb %01111000 
+08d2 48			        defb %01001000 
+08d3 40			        defb %01000000 
+08d4 40			        defb %01000000 
+08d5 40			        defb %01000000 
+08d6 40			        defb %01000000 
+08d7 40			        defb %01000000 
+08d8 00			        defb %00000000 
+08d9			 
+08d9			        ; code=227, hex=0xE3, ascii="!c" 
+08d9 00			        defb %00000000 
+08da 7c			        defb %01111100 
+08db 28			        defb %00101000 
+08dc 28			        defb %00101000 
+08dd 28			        defb %00101000 
+08de 28			        defb %00101000 
+08df 28			        defb %00101000 
+08e0 00			        defb %00000000 
+08e1			 
+08e1			        ; code=228, hex=0xE4, ascii="!d" 
+08e1 78			        defb %01111000 
+08e2 48			        defb %01001000 
+08e3 20			        defb %00100000 
+08e4 10			        defb %00010000 
+08e5 20			        defb %00100000 
+08e6 48			        defb %01001000 
+08e7 78			        defb %01111000 
+08e8 00			        defb %00000000 
+08e9			 
+08e9			        ; code=229, hex=0xE5, ascii="!e" 
+08e9 00			        defb %00000000 
+08ea 00			        defb %00000000 
+08eb 3c			        defb %00111100 
+08ec 48			        defb %01001000 
+08ed 48			        defb %01001000 
+08ee 30			        defb %00110000 
+08ef 00			        defb %00000000 
+08f0 00			        defb %00000000 
+08f1			 
+08f1			        ; code=230, hex=0xE6, ascii="!f" 
+08f1 00			        defb %00000000 
+08f2 00			        defb %00000000 
+08f3 48			        defb %01001000 
+08f4 48			        defb %01001000 
+08f5 48			        defb %01001000 
+08f6 70			        defb %01110000 
+08f7 40			        defb %01000000 
+08f8 40			        defb %01000000 
+08f9			 
+08f9			        ; code=231, hex=0xE7, ascii="!g" 
+08f9 00			        defb %00000000 
+08fa 00			        defb %00000000 
+08fb 28			        defb %00101000 
+08fc 50			        defb %01010000 
+08fd 10			        defb %00010000 
+08fe 10			        defb %00010000 
+08ff 10			        defb %00010000 
+0900 00			        defb %00000000 
+0901			 
+0901			        ; code=232, hex=0xE8, ascii="!h" 
+0901 38			        defb %00111000 
+0902 10			        defb %00010000 
+0903 38			        defb %00111000 
+0904 44			        defb %01000100 
+0905 38			        defb %00111000 
+0906 10			        defb %00010000 
+0907 38			        defb %00111000 
+0908 00			        defb %00000000 
+0909			 
+0909			        ; code=233, hex=0xE9, ascii="!i" 
+0909 30			        defb %00110000 
+090a 48			        defb %01001000 
+090b 48			        defb %01001000 
+090c 78			        defb %01111000 
+090d 48			        defb %01001000 
+090e 48			        defb %01001000 
+090f 30			        defb %00110000 
+0910 00			        defb %00000000 
+0911			 
+0911			        ; code=234, hex=0xEA, ascii="!j" 
+0911 00			        defb %00000000 
+0912 38			        defb %00111000 
+0913 44			        defb %01000100 
+0914 44			        defb %01000100 
+0915 28			        defb %00101000 
+0916 28			        defb %00101000 
+0917 6c			        defb %01101100 
+0918 00			        defb %00000000 
+0919			 
+0919			        ; code=235, hex=0xEB, ascii="!k" 
+0919 30			        defb %00110000 
+091a 40			        defb %01000000 
+091b 20			        defb %00100000 
+091c 10			        defb %00010000 
+091d 38			        defb %00111000 
+091e 48			        defb %01001000 
+091f 30			        defb %00110000 
+0920 00			        defb %00000000 
+0921			 
+0921			        ; code=236, hex=0xEC, ascii="!l" 
+0921 00			        defb %00000000 
+0922 00			        defb %00000000 
+0923 28			        defb %00101000 
+0924 54			        defb %01010100 
+0925 54			        defb %01010100 
+0926 28			        defb %00101000 
+0927 00			        defb %00000000 
+0928 00			        defb %00000000 
+0929			 
+0929			        ; code=237, hex=0xED, ascii="!m" 
+0929 00			        defb %00000000 
+092a 10			        defb %00010000 
+092b 38			        defb %00111000 
+092c 54			        defb %01010100 
+092d 54			        defb %01010100 
+092e 38			        defb %00111000 
+092f 10			        defb %00010000 
+0930 00			        defb %00000000 
+0931			 
+0931			        ; code=238, hex=0xEE, ascii="!n" 
+0931 00			        defb %00000000 
+0932 38			        defb %00111000 
+0933 40			        defb %01000000 
+0934 78			        defb %01111000 
+0935 40			        defb %01000000 
+0936 38			        defb %00111000 
+0937 00			        defb %00000000 
+0938 00			        defb %00000000 
+0939			 
+0939			        ; code=239, hex=0xEF, ascii="!o" 
+0939 00			        defb %00000000 
+093a 30			        defb %00110000 
+093b 48			        defb %01001000 
+093c 48			        defb %01001000 
+093d 48			        defb %01001000 
+093e 48			        defb %01001000 
+093f 00			        defb %00000000 
+0940 00			        defb %00000000 
+0941			 
+0941			        ; code=240, hex=0xF0, ascii="!p" 
+0941 00			        defb %00000000 
+0942 78			        defb %01111000 
+0943 00			        defb %00000000 
+0944 78			        defb %01111000 
+0945 00			        defb %00000000 
+0946 78			        defb %01111000 
+0947 00			        defb %00000000 
+0948 00			        defb %00000000 
+0949			 
+0949			        ; code=241, hex=0xF1, ascii="!q" 
+0949 00			        defb %00000000 
+094a 10			        defb %00010000 
+094b 38			        defb %00111000 
+094c 10			        defb %00010000 
+094d 00			        defb %00000000 
+094e 38			        defb %00111000 
+094f 00			        defb %00000000 
+0950 00			        defb %00000000 
+0951			 
+0951			        ; code=242, hex=0xF2, ascii="!r" 
+0951 40			        defb %01000000 
+0952 30			        defb %00110000 
+0953 08			        defb %00001000 
+0954 30			        defb %00110000 
+0955 40			        defb %01000000 
+0956 00			        defb %00000000 
+0957 78			        defb %01111000 
+0958 00			        defb %00000000 
+0959			 
+0959			        ; code=243, hex=0xF3, ascii="!s" 
+0959 08			        defb %00001000 
+095a 30			        defb %00110000 
+095b 40			        defb %01000000 
+095c 30			        defb %00110000 
+095d 08			        defb %00001000 
+095e 00			        defb %00000000 
+095f 78			        defb %01111000 
+0960 00			        defb %00000000 
+0961			 
+0961			        ; code=244, hex=0xF4, ascii="!t" 
+0961 00			        defb %00000000 
+0962 08			        defb %00001000 
+0963 14			        defb %00010100 
+0964 10			        defb %00010000 
+0965 10			        defb %00010000 
+0966 10			        defb %00010000 
+0967 10			        defb %00010000 
+0968 10			        defb %00010000 
+0969			 
+0969			        ; code=245, hex=0xF5, ascii="!u" 
+0969 10			        defb %00010000 
+096a 10			        defb %00010000 
+096b 10			        defb %00010000 
+096c 10			        defb %00010000 
+096d 10			        defb %00010000 
+096e 50			        defb %01010000 
+096f 20			        defb %00100000 
+0970 00			        defb %00000000 
+0971			 
+0971			        ; code=246, hex=0xF6, ascii="!v" 
+0971 00			        defb %00000000 
+0972 10			        defb %00010000 
+0973 00			        defb %00000000 
+0974 7c			        defb %01111100 
+0975 00			        defb %00000000 
+0976 10			        defb %00010000 
+0977 00			        defb %00000000 
+0978 00			        defb %00000000 
+0979			 
+0979			        ; code=247, hex=0xF7, ascii="!w" 
+0979 00			        defb %00000000 
+097a 28			        defb %00101000 
+097b 50			        defb %01010000 
+097c 00			        defb %00000000 
+097d 28			        defb %00101000 
+097e 50			        defb %01010000 
+097f 00			        defb %00000000 
+0980 00			        defb %00000000 
+0981			 
+0981			        ; code=248, hex=0xF8, ascii="!x" 
+0981 30			        defb %00110000 
+0982 48			        defb %01001000 
+0983 48			        defb %01001000 
+0984 30			        defb %00110000 
+0985 00			        defb %00000000 
+0986 00			        defb %00000000 
+0987 00			        defb %00000000 
+0988 00			        defb %00000000 
+0989			 
+0989			        ; code=249, hex=0xF9, ascii="!y" 
+0989 00			        defb %00000000 
+098a 00			        defb %00000000 
+098b 00			        defb %00000000 
+098c 30			        defb %00110000 
+098d 30			        defb %00110000 
+098e 00			        defb %00000000 
+098f 00			        defb %00000000 
+0990 00			        defb %00000000 
+0991			 
+0991			        ; code=250, hex=0xFA, ascii="!z" 
+0991 00			        defb %00000000 
+0992 00			        defb %00000000 
+0993 00			        defb %00000000 
+0994 20			        defb %00100000 
+0995 00			        defb %00000000 
+0996 00			        defb %00000000 
+0997 00			        defb %00000000 
+0998 00			        defb %00000000 
+0999			 
+0999			        ; code=251, hex=0xFB, ascii="!{" 
+0999 00			        defb %00000000 
+099a 1c			        defb %00011100 
+099b 10			        defb %00010000 
+099c 10			        defb %00010000 
+099d 50			        defb %01010000 
+099e 50			        defb %01010000 
+099f 20			        defb %00100000 
+09a0 00			        defb %00000000 
+09a1			 
+09a1			        ; code=252, hex=0xFC, ascii="!|" 
+09a1 50			        defb %01010000 
+09a2 28			        defb %00101000 
+09a3 28			        defb %00101000 
+09a4 28			        defb %00101000 
+09a5 00			        defb %00000000 
+09a6 00			        defb %00000000 
+09a7 00			        defb %00000000 
+09a8 00			        defb %00000000 
+09a9			 
+09a9			        ; code=253, hex=0xFD, ascii="!}" 
+09a9 60			        defb %01100000 
+09aa 10			        defb %00010000 
+09ab 20			        defb %00100000 
+09ac 70			        defb %01110000 
+09ad 00			        defb %00000000 
+09ae 00			        defb %00000000 
+09af 00			        defb %00000000 
+09b0 00			        defb %00000000 
+09b1			 
+09b1			        ; code=254, hex=0xFE, ascii="!~" 
+09b1 00			        defb %00000000 
+09b2 00			        defb %00000000 
+09b3 78			        defb %01111000 
+09b4 78			        defb %01111000 
+09b5 78			        defb %01111000 
+09b6 78			        defb %01111000 
+09b7 00			        defb %00000000 
+09b8 00			        defb %00000000 
+09b9			 
+09b9			        ; code=255, hex=0xFF, ascii="!^" 
+09b9 00			        defb %00000000 
+09ba 00			        defb %00000000 
+09bb 00			        defb %00000000 
+09bc 00			        defb %00000000 
+09bd 00			        defb %00000000 
+09be 00			        defb %00000000 
+09bf 00			        defb %00000000 
+09c0 00			        defb %000000
+# End of file TmsFont.asm
+09c1			 
+09c1			        include "tms.asm"                       ; TMS graphics routines 
+09c1			; TMS9918A graphics subroutines 
+09c1			; Copyright 2018-2020 J.B. Langston 
+09c1			; 
+09c1			; Permission is hereby granted, free of charge, to any person obtaining a  
+09c1			; copy of this software and associated documentation files (the "Software"),  
+09c1			; to deal in the Software without restriction, including without limitation  
+09c1			; the rights to use, copy, modify, merge, publish, distribute, sublicense,  
+09c1			; and/or sell copies of the Software, and to permit persons to whom the  
+09c1			; Software is furnished to do so, subject to the following conditions: 
+09c1			;  
+09c1			; The above copyright notice and this permission notice shall be included in 
+09c1			; all copies or substantial portions of the Software. 
+09c1			;  
+09c1			; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+09c1			; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  
+09c1			; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+09c1			; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  
+09c1			; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING  
+09c1			; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER  
+09c1			; DEALINGS IN THE SOFTWARE. 
+09c1			 
+09c1			; VDP Programmer's Guide: http://map.grauw.nl/resources/video/ti-vdp-programmers-guide.pdf 
+09c1			 
+09c1			; --------------------------------------------------------------------------- 
+09c1			; configuration parameters; can be changed at runtime 
+09c1			TmsPort: 
+09c1 a0			        defb    0xa0            ; port for TMS vram (reg is 1 higher) 
+09c2			TmsWait: 
+09c2 1f			        defb    31              ; iterations to wait after ram access 
+09c3			TmsMode: 
+09c3 00 00		        defw    0               ; mode registers 
+09c5			TmsNameAddr: 
+09c5 00 38		        defw    3800h           ; name table address (multiples of 400H) 
+09c7			TmsColorAddr: 
+09c7 00 20		        defw    2000h           ; color table address (multiples of 40H) 
+09c9			TmsPatternAddr: 
+09c9 00 00		        defw    0               ; pattern table (multiples of 800H) 
+09cb			TmsSpritePatternAddr: 
+09cb 00 18		        defw    1800h           ; sprite attribute table (multiples of 80H) 
+09cd			TmsSpriteAttrAddr: 
+09cd c0 3b		        defw    3bc0h           ; sprite pattern table (multiples of 800H) 
+09cf			TmsScreenColors: 
+09cf 00			        defb    0               ; background (low nybble), text color (high nybble) 
+09d0			; --------------------------------------------------------------------------- 
+09d0			; register constants 
+09d0			 
+09d0			TmsWriteBit:            equ 40h                 ; bit to indicate memory write 
+09d0			 
+09d0			; Registers 
+09d0			TmsCtrl0Reg:            equ 80h 
+09d0			TmsCtrl1Reg:            equ 81h 
+09d0			TmsNameReg:             equ 82h 
+09d0			TmsColorTableReg:       equ 83h 
+09d0			TmsPatternReg:          equ 84h 
+09d0			TmsSpriteAttrReg:       equ 85h 
+09d0			TmsSpritePatternReg:    equ 86h 
+09d0			TmsColorReg:            equ 87h 
+09d0			 
+09d0			; Control Register Bits 
+09d0			TmsM3:                  equ 200h 
+09d0			TmsExtVideo:            equ 100h 
+09d0			Tms16k:                 equ 80h 
+09d0			TmsDisplayEnable:       equ 40h 
+09d0			TmsIntEnableBit:        equ 20h 
+09d0			TmsM1:                  equ 10h 
+09d0			TmsM2:                  equ 8 
+09d0			TmsSprite32:            equ 2 
+09d0			TmsSpriteMag:           equ 1 
+09d0			 
+09d0			; --------------------------------------------------------------------------- 
+09d0			; table lengths 
+09d0			 
+09d0			TmsTileNameLen:         equ 300h 
+09d0			TmsTextNameLen:         equ 3c0h 
+09d0			 
+09d0			TmsTileColorLen:        equ 20h 
+09d0			TmsBitmapColorLen:      equ 800h 
+09d0			 
+09d0			TmsTilePatternLen:      equ 800h 
+09d0			TmsTextPatternLen:      equ 800h 
+09d0			TmsMulticolorPatternLen: equ 600h 
+09d0			TmsBitmapPatternLen:    equ 1800h 
+09d0			 
+09d0			; --------------------------------------------------------------------------- 
+09d0			; color constants 
+09d0			 
+09d0			TmsTransparent:         equ 0 
+09d0			TmsBlack:               equ 1 
+09d0			TmsMediumGreen:         equ 2 
+09d0			TmsLightGreen:          equ 3 
+09d0			TmsDarkBlue:            equ 4 
+09d0			TmsLightBlue:           equ 5 
+09d0			TmsDarkRed:             equ 6 
+09d0			TmsCyan:                equ 7 
+09d0			TmsMediumRed:           equ 8 
+09d0			TmsLightRed:            equ 9 
+09d0			TmsDarkYellow:          equ 0ah 
+09d0			TmsLightYellow:         equ 0bh 
+09d0			TmsDarkGreen:           equ 0ch 
+09d0			TmsMagenta:             equ 0dh 
+09d0			TmsGray:                equ 0eh 
+09d0			TmsWhite:               equ 0fh 
+09d0			 
+09d0			; --------------------------------------------------------------------------- 
+09d0			; port I/O routines 
+09d0			 
+09d0			; These routines access the ports configured in TmsPort. 
+09d0			 
+09d0			; These memory locations can be set at runtime to support different hardware 
+09d0			; configurations from the same binary. TmsProbe automatically detects the 
+09d0			; TMS9918A on common ports. 
+09d0			 
+09d0			; The TMS9918A RAM must not be accessed more than once every 8 us or display  
+09d0			; corruption may occur.  During vblank and with the display disabled,  
+09d0			; accesses can be 2 us apart, but we will always use 8 us minimum delay. 
+09d0			 
+09d0			; TmsRamIn/TmsRamOut include a configurable delay loop, which waits for the 
+09d0			; configured iterations between VRAM writes to work properly with faster CPUs 
+09d0			 
+09d0			; Minimum time to execute each procedure call: 
+09d0			; Z80: 88 cycles, 8.8 us @ 10 MHz 
+09d0			; Z180: 80 cycles, 8.64 us @ 9.216 MHz, 4.32 us @ 18.432, 2.16 us @ 36.864 
+09d0			; 
+09d0			; Additional delay per djnz iteration: 
+09d0			; Z80: 8 cycles * (iterations - 1) 
+09d0			;       0.8 us @ 10 MHz 
+09d0			; Z180: 7 cycles * (iterations - 1) 
+09d0			;       0.756 us @ 9.216 MHz, 0.378 us @ 18.432, 0.189 us @ 36.864 
+09d0			 
+09d0			; Delay loop iterations required for different CPU speeds: 
+09d0			; Z80 @ 10 MHz or less: 1 
+09d0			; Z180 @ 9.216 MHz or less: 1 
+09d0			; Z180 @ 18.432 MHz: 10 
+09d0			; Z180 @ 36.864 MHz: 31 
+09d0 01 0a 1f		TmsWaits:       defb 1, 10, 31          ; wait iterations to add for different CPU speeds 
+09d3			 
+09d3			; set up wait time based on clock multiplier in E 
+09d3			TmsSetWait: 
+09d3 21 d0 09		        ld      hl, TmsWaits 
+09d6 16 00		        ld      d, 0 
+09d8 19			        add     hl, de 
+09d9 7e			        ld      a, (hl) 
+09da 32 c2 09		        ld      (TmsWait), a 
+09dd c9			        ret 
+09de			 
+09de			; try to find TMS9918A on common ports 
+09de			TmsProbe: 
+09de 21 02 0a		        ld      hl, TmsPorts 
+09e1 06 02		        ld      b, TmsNumPorts 
+09e3			TmsProbeNext:        
+09e3 7e			        ld      a, (hl) 
+09e4 32 c1 09		        ld      (TmsPort), a 
+09e7 cd 12 0a		        call    TmsRegIn                ; clear vsync bit 
+09ea cd 12 0a		        call    TmsRegIn                ; check it again 
+09ed fa fd 09		        jp      m, TmsProbeFailed       ; if still set, not a TMS9918A 
+09f0 11 ff ff		        ld      de, 0ffffh              ; long enough for another vsync 
+09f3			TmsProbeWait: 
+09f3 cd 12 0a		        call    TmsRegIn                ; check vsync bit again 
+09f6 f8			        ret     m                       ; if set, it's a TMS9918A (and Z is clear) 
+09f7 1b			        dec     de                      ; otherwise, keep waiting 
+09f8 7b			        ld      a, e 
+09f9 b2			        or      d 
+09fa c2 f3 09		        jp      nz, TmsProbeWait 
+09fd			TmsProbeFailed: 
+09fd 23			        inc     hl                      ; if still clear after this long, try next port 
+09fe 10 e3		        djnz    TmsProbeNext 
+0a00 af			        xor     a                       ; set Z if we ran out of ports to check 
+0a01 c9			        ret 
+0a02			 
+0a02			TmsPorts:                               ; List of ports to probe: 
+0a02 a0			        defb 0xa0                       ; Nabu 
+0a03 80			        defb 0x80                       ; Z80-Retro 
+0a04			        ; add additional ports to check here 
+0a04			TmsNumPorts:    equ $ - TmsPorts 
+0a04			 
+0a04			; set a single register value 
+0a04			;       A = register value 
+0a04			;       E = register to set 
+0a04			TmsSetReg: 
+0a04 cd 08 0a		        call    TmsRegOut 
+0a07 7b			        ld      a, e 
+0a08			        ; fallthrough to TmsRegOut 
+0a08			 
+0a08			; write to configured register port 
+0a08			; parameters: 
+0a08			;       A = value to write 
+0a08			TmsRegOut: 
+0a08 c5			        push    bc 
+0a09 ed 4b c1 09	        ld      bc, (TmsPort) 
+0a0d 0c			        inc     c 
+0a0e ed 79		        out     (c), a 
+0a10 c1			        pop     bc 
+0a11 c9			        ret 
+0a12			 
+0a12			; read from configured register port 
+0a12			; returns: 
+0a12			;       A = value read 
+0a12			TmsRegIn: 
+0a12 c5			        push    bc 
+0a13 ed 4b c1 09	        ld      bc, (TmsPort) 
+0a17 0c			        inc     c 
+0a18 ed 78		        in      a, (c) 
+0a1a c1			        pop     bc 
+0a1b c9			        ret 
+0a1c			 
+0a1c			; write to configured VRAM port 
+0a1c			; parameters: 
+0a1c			;       A = value to write 
+0a1c			                                        ; Z80 | Z180 cycles... 
+0a1c			TmsRamOut:                              ; 17  | 16 (call) 
+0a1c c5			        push    bc                      ; 11  | 11 
+0a1d ed 4b c1 09	        ld      bc, (TmsPort)           ; 20  | 18 
+0a21 ed 79		        out     (c), a                  ; 12  | 10 
+0a23			TmsRamOutDelay: 
+0a23 10 fe		        djnz    TmsRamOutDelay          ; 8   | 7  plus (13 | 9) * (iterations-1) 
+0a25 c1			        pop     bc                      ; 10  | 9 
+0a26 c9			        ret                             ; 10  | 9 
+0a27			 
+0a27			; read from configured VRAM port 
+0a27			; returns: 
+0a27			;       A = value read 
+0a27			TmsRamIn: 
+0a27 c5			        push    bc 
+0a28 ed 4b c1 09	        ld      bc, (TmsPort) 
+0a2c			TmsRamInDelay: 
+0a2c 10 fe		        djnz    TmsRamInDelay 
+0a2e ed 78		        in      a, (c) 
+0a30 ed 4b c1 09	        ld      bc, (TmsPort) 
+0a34			TmsRamInDelay2: 
+0a34 10 fe		        djnz    TmsRamInDelay2 
+0a36 c1			        pop     bc 
+0a37 c9			        ret 
+0a38			 
+0a38			; --------------------------------------------------------------------------- 
+0a38			; register configuration routines 
+0a38			 
+0a38			; set the background color 
+0a38			;       A = requested color 
+0a38			TmsBackground: 
+0a38 e6 0f		        and     0fh 
+0a3a 47			        ld      b, a 
+0a3b 3a cf 09		        ld      a, (TmsScreenColors) 
+0a3e e6 f0		        and     0f0h 
+0a40 b0			        or      b 
+0a41 32 cf 09		        ld      (TmsScreenColors), a 
+0a44 1e 87		        ld      e, TmsColorReg 
+0a46 c3 04 0a		        jp      TmsSetReg 
+0a49			 
+0a49			; set the sprite configuration 
+0a49			;       A = sprite options 
+0a49			TmsSpriteConfig: 
+0a49 e6 03		        and     TmsSprite32|TmsSpriteMag 
+0a4b 47			        ld      b, a 
+0a4c 3a c3 09		        ld      a, (TmsMode) 
+0a4f e6 fc		        and     ~(TmsSprite32|TmsSpriteMag) 
+0a51 b0			        or      b 
+0a52 32 c3 09		        ld      (TmsMode), a 
+0a55 1e 81		        ld      e, TmsCtrl1Reg 
+0a57 c3 04 0a		        jp      TmsSetReg 
+0a5a			 
+0a5a			 
+0a5a			; enable vblank interrupts 
+0a5a			TmsIntEnable: 
+0a5a 3a c3 09		        ld      a, (TmsMode) 
+0a5d f6 20		        or      TmsIntEnableBit 
+0a5f 32 c3 09		        ld      (TmsMode), a 
+0a62 1e 81		        ld      e, TmsCtrl1Reg 
+0a64 c3 04 0a		        jp      TmsSetReg 
+0a67			 
+0a67			; disable vblank interrupts 
+0a67			TmsIntDisable: 
+0a67 3a c3 09		        ld      a, (TmsMode) 
+0a6a e6 df		        and     ~TmsIntEnableBit 
+0a6c 32 c3 09		        ld      (TmsMode), a 
+0a6f 1e 81		        ld      e, TmsCtrl1Reg 
+0a71 c3 04 0a		        jp      TmsSetReg 
+0a74			 
+0a74			; --------------------------------------------------------------------------- 
+0a74			; initialization routines 
+0a74			 
+0a74			TmsBlankFlags:          equ     Tms16k 
+0a74			TmsTileFlags:           equ     Tms16k | TmsDisplayEnable 
+0a74			TmsTextFlags:           equ     Tms16k | TmsDisplayEnable | TmsM1 
+0a74			TmsMulticolorFlags:     equ     Tms16k | TmsDisplayEnable | TmsM2 
+0a74			TmsBitmapFlags:         equ     Tms16k | TmsDisplayEnable | TmsM3 
+0a74			 
+0a74			; reset registers and clear all 16KB of video memory 
+0a74			TmsReset: 
+0a74 21 80 00		        ld      hl, TmsBlankFlags       ; blank the screen with 16KB enabled 
+0a77 22 c3 09		        ld      (TmsMode), hl 
+0a7a 7d			        ld      a, l 
+0a7b 1e 81		        ld      e, TmsCtrl1Reg 
+0a7d cd 04 0a		        call    TmsSetReg 
+0a80 7c			        ld      a, h 
+0a81 1e 80		        ld      e, TmsCtrl0Reg 
+0a83 cd 04 0a		        call    TmsSetReg 
+0a86 3e 00		        ld      a, TmsTransparent 
+0a88 cd 38 0a		        call    TmsBackground 
+0a8b 3e 00		        ld      a, TmsTransparent 
+0a8d cd e9 0b		        call    TmsTextColor 
+0a90 11 00 00		        ld      de, 0                   ; clear entire VRAM 
+0a93 01 00 40		        ld      bc, 4000h 
+0a96 3e 00		        ld      a, 0 
+0a98 cd da 0b		        call    TmsFill 
+0a9b c9			        ret 
+0a9c			 
+0a9c			; initialize for multicolor mode  
+0a9c			TmsMulticolor: 
+0a9c cd 74 0a		        call    TmsReset 
+0a9f ed 5b c5 09	        ld      de, (TmsNameAddr) 
+0aa3 cd b3 0b		        call    TmsWriteAddr 
+0aa6 16 06		        ld      d, 6                    ; name table has 6 sections 
+0aa8 1e 00		        ld      e, 0                    ; lines in first section start at 0 
+0aaa			TmsSectionLoop: 
+0aaa 0e 04		        ld      c, 4                    ; each section has 4 identical lines 
+0aac			TmsLineLoop: 
+0aac 06 20		        ld      b, 32                   ; each line is 32 bytes long 
+0aae 7b			        ld      a, e                    ; same starting value for each line in section 
+0aaf			TmsByteLoop:  
+0aaf cd 1c 0a		        call    TmsRamOut 
+0ab2 3c			        inc     a                       ; byte value 
+0ab3 10 fa		        djnz    TmsByteLoop 
+0ab5 0d			        dec     c                       ; line counter 
+0ab6 c2 ac 0a		        jp      nz, TmsLineLoop 
+0ab9 5f			        ld      e, a                    ; next starting value = current + 32 
+0aba 15			        dec     d                       ; section counter 
+0abb c2 aa 0a		        jp      nz, TmsSectionLoop 
+0abe 21 c8 00		        ld      hl, TmsMulticolorFlags 
+0ac1 22 c3 09		        ld      (TmsMode), hl 
+0ac4 c3 e8 0a		        jp      TmsInitNonBitmap 
+0ac7			 
+0ac7			; initialize for tiled graphics 
+0ac7			TmsTile: 
+0ac7 cd 74 0a		        call    TmsReset 
+0aca 21 c0 00		        ld      hl, TmsTileFlags 
+0acd 22 c3 09		        ld      (TmsMode), hl 
+0ad0 c3 e8 0a		        jp      TmsInitNonBitmap 
+0ad3			 
+0ad3			; initialize for text mode 
+0ad3			;       HL = address of font to load 
+0ad3			TmsTextMode: 
+0ad3 e5			        push    hl 
+0ad4 cd 74 0a		        call    TmsReset 
+0ad7 e1			        pop     hl 
+0ad8 ed 5b c9 09	        ld      de, (TmsPatternAddr)    ; load font from address in hl 
+0adc 01 00 08		        ld      bc, TmsTextPatternLen 
+0adf cd cb 0b		        call    TmsWrite 
+0ae2 21 d0 00		        ld      hl, TmsTextFlags 
+0ae5 22 c3 09		        ld      (TmsMode), hl 
+0ae8			        ; fallthrough to TmsInitNonBitmap 
+0ae8			 
+0ae8			; non-bitmap color and pattern table configuration 
+0ae8			TmsInitNonBitmap: 
+0ae8			        ; set up color table address (register = address / 400H) 
+0ae8 3a c7 09		        ld      a, (TmsColorAddr) 
+0aeb e6 c0		        and     0c0h 
+0aed 32 c7 09		        ld      (TmsColorAddr), a 
+0af0 57			        ld      d, a 
+0af1 3a c8 09		        ld      a, (TmsColorAddr+1) 
+0af4 e6 3f		        and     3fh 
+0af6 32 c8 09		        ld      (TmsColorAddr+1), a 
+0af9 cb 12		        rl      d 
+0afb 17			        rla 
+0afc cb 12		        rl      d 
+0afe 17			        rla 
+0aff 1e 83		        ld      e, TmsColorTableReg 
+0b01 cd 04 0a		        call    TmsSetReg 
+0b04			 
+0b04			        ; set up pattern table address (register = address / 800H) 
+0b04 af			        xor     a 
+0b05 32 c9 09		        ld      (TmsPatternAddr), a 
+0b08 3a ca 09		        ld      a, (TmsPatternAddr+1)  
+0b0b e6 38		        and     38h 
+0b0d 32 ca 09		        ld      (TmsPatternAddr+1), a 
+0b10 0f			        rrca 
+0b11 0f			        rrca 
+0b12 0f			        rrca 
+0b13 1e 84		        ld      e, TmsPatternReg 
+0b15 cd 04 0a		        call    TmsSetReg 
+0b18 c3 66 0b		        jp      TmsInitCommon 
+0b1b			 
+0b1b			; initialize for bitmapped graphics 
+0b1b			TmsBitmap: 
+0b1b cd 74 0a		        call    TmsReset 
+0b1e ed 5b c5 09	        ld      de, (TmsNameAddr)       ; initialize name table with 3 sets 
+0b22 cd b3 0b		        call    TmsWriteAddr            ; of 256 bytes ranging from 00-FF 
+0b25 06 03		        ld      b, 3 
+0b27 af			        xor     a 
+0b28			TmsBitmapLoop: 
+0b28 cd 1c 0a		        call    TmsRamOut 
+0b2b 3c			        inc     a 
+0b2c c2 28 0b		        jp      nz, TmsBitmapLoop 
+0b2f 10 f7		        djnz    TmsBitmapLoop 
+0b31 21 c0 02		        ld      hl, TmsBitmapFlags 
+0b34 22 c3 09		        ld      (TmsMode), hl 
+0b37			 
+0b37			        ; set up color table at 0H (register = 7FH) or 2000H (register = 0FFH) 
+0b37 af			        xor     a 
+0b38 32 c7 09		        ld      (TmsColorAddr), a 
+0b3b 32 c9 09		        ld      (TmsPatternAddr), a 
+0b3e 3a c8 09		        ld      a, (TmsColorAddr+1) 
+0b41 e6 20		        and     20h 
+0b43 32 c8 09		        ld      (TmsColorAddr+1), a 
+0b46 3e ff		        ld      a, 0ffh                 ; color table at 2000H 
+0b48 c2 4d 0b		        jp      nz, TmsColorTableHigh 
+0b4b 3e 7f		        ld      a, 7fh                  ; color table at 0H 
+0b4d			TmsColorTableHigh: 
+0b4d 1e 83		        ld      e, TmsColorTableReg 
+0b4f cd 04 0a		        call    TmsSetReg 
+0b52			 
+0b52			        ; set up pattern table at 0H (register = 3) or 2000H (register = 7) 
+0b52 3a ca 09		        ld      a, (TmsPatternAddr+1) 
+0b55 e6 20		        and     20h 
+0b57 32 ca 09		        ld      (TmsPatternAddr+1), a 
+0b5a 3e 07		        ld      a, 7                    ; pattern table at 2000H 
+0b5c c2 61 0b		        jp      nz, TmsPatternTableHigh 
+0b5f 3e 03		        ld      a, 3                    ; pattern table at 0H 
+0b61			TmsPatternTableHigh: 
+0b61 1e 84		        ld      e, TmsPatternReg 
+0b63 cd 04 0a		        call    TmsSetReg 
+0b66			        ; fall through to TmsInitCommon 
+0b66			 
+0b66			 
+0b66			; common initialization for all modes 
+0b66			TmsInitCommon: 
+0b66			        ; set up name table address (register = address / 400H) 
+0b66 af			        xor     a 
+0b67 32 c5 09		        ld      (TmsNameAddr), a 
+0b6a 3a c6 09		        ld      a, (TmsNameAddr+1) 
+0b6d e6 3c		        and     3ch 
+0b6f 32 c6 09		        ld      (TmsNameAddr+1), a 
+0b72 0f			        rrca 
+0b73 0f			        rrca 
+0b74 1e 82		        ld      e, TmsNameReg 
+0b76 cd 04 0a		        call    TmsSetReg 
+0b79			 
+0b79			        ; set up sprite pattern table address (register = address / 80H) 
+0b79 3a cd 09		        ld      a, (TmsSpriteAttrAddr) 
+0b7c e6 80		        and     80h 
+0b7e 32 cd 09		        ld      (TmsSpriteAttrAddr), a 
+0b81 57			        ld      d, a 
+0b82 3a ce 09		        ld      a, (TmsSpriteAttrAddr+1) 
+0b85 e6 7f		        and     7fh 
+0b87 cb 12		        rl      d 
+0b89 17			        rla 
+0b8a 1e 85		        ld      e, TmsSpriteAttrReg 
+0b8c cd 04 0a		        call    TmsSetReg 
+0b8f			 
+0b8f			        ; set up sprite attribute table address (register = address / 800H) 
+0b8f af			        xor     a                        
+0b90 32 cb 09		        ld      (TmsSpritePatternAddr), a 
+0b93 3a cc 09		        ld      a, (TmsSpritePatternAddr+1) 
+0b96 e6 38		        and     38h 
+0b98 32 cc 09		        ld      (TmsSpritePatternAddr+1), a 
+0b9b 0f			        rrca 
+0b9c 0f			        rrca 
+0b9d 0f			        rrca 
+0b9e 1e 86		        ld      e, TmsSpritePatternReg 
+0ba0 cd 04 0a		        call    TmsSetReg 
+0ba3			 
+0ba3			        ; set up control registers 
+0ba3 1e 81		        ld      e, TmsCtrl1Reg 
+0ba5 3a c3 09		        ld      a, (TmsMode) 
+0ba8 cd 04 0a		        call    TmsSetReg 
+0bab 3a c4 09		        ld      a, (TmsMode+1) 
+0bae 1e 80		        ld      e, TmsCtrl0Reg 
+0bb0 c3 04 0a		        jp      TmsSetReg 
+0bb3			 
+0bb3			; --------------------------------------------------------------------------- 
+0bb3			; memory access routines 
+0bb3			 
+0bb3			; set the next address of vram to write 
+0bb3			;       DE = address 
+0bb3			TmsWriteAddr: 
+0bb3 7b			        ld      a, e                    ; send lsb 
+0bb4 cd 08 0a		        call    TmsRegOut 
+0bb7 7a			        ld      a, d                    ; mask off msb to max of 16KB 
+0bb8 e6 3f		        and     3fh 
+0bba f6 40		        or      TmsWriteBit             ; indicate that this is a write 
+0bbc cd 08 0a		        call    TmsRegOut 
+0bbf c9			        ret 
+0bc0			 
+0bc0			; set the next address of vram to read 
+0bc0			;       DE = address 
+0bc0			TmsReadAddr: 
+0bc0 7b			        ld      a, e                    ; send lsb 
+0bc1 cd 08 0a		        call    TmsRegOut 
+0bc4 7a			        ld      a, d                    ; mask off msb to max of 16KB 
+0bc5 e6 3f		        and     3Fh 
+0bc7 cd 08 0a		        call    TmsRegOut 
+0bca c9			        ret 
+0bcb			 
+0bcb			; copy bytes from ram to vram 
+0bcb			;       HL = ram source address 
+0bcb			;       DE = vram destination address 
+0bcb			;       BC = byte count 
+0bcb			TmsWrite: 
+0bcb cd b3 0b		        call    TmsWriteAddr 
+0bce			TmsWriteLoop: 
+0bce 7e			        ld      a, (hl) 
+0bcf cd 1c 0a		        call    TmsRamOut 
+0bd2 23			        inc     hl 
+0bd3 0b			        dec     bc 
+0bd4 78			        ld      a, b 
+0bd5 b1			        or      c 
+0bd6 c2 ce 0b		        jp      nz, TmsWriteLoop 
+0bd9 c9			        ret 
+0bda			 
+0bda			; fill a section of memory with a single value 
+0bda			;       A = value to fill 
+0bda			;       DE = vram destination address 
+0bda			;       BC = byte count 
+0bda			TmsFill: 
+0bda f5			        push    af 
+0bdb cd b3 0b		        call    TmsWriteAddr 
+0bde f1			        pop     af 
+0bdf			TmsFillLoop: 
+0bdf cd 1c 0a		        call    TmsRamOut 
+0be2 0d			        dec     c 
+0be3 c2 df 0b		        jp      nz, TmsFillLoop 
+0be6 10 f7		        djnz    TmsFillLoop 
+0be8 c9			        ret 
+0be9			 
+0be9			; --------------------------------------------------------------------------- 
+0be9			; text routines 
+0be9			; set text color 
+0be9			;       A = requested color 
+0be9			TmsTextColor: 
+0be9 87			        add     a, a                    ; text color into high nybble 
+0bea 87			        add     a, a 
+0beb 87			        add     a, a 
+0bec 87			        add     a, a 
+0bed 47			        ld      b, a                    ; save for later 
+0bee 3a cf 09		        ld      a, (TmsScreenColors)    ; get current colors 
+0bf1 e6 0f		        and     0fh                     ; mask off old text color 
+0bf3 b0			        or      b                       ; set new text color 
+0bf4 32 cf 09		        ld      (TmsScreenColors), a 
+0bf7 1e 87		        ld      e, TmsColorReg 
+0bf9 c3 04 0a		        jp      TmsSetReg               ; save it back 
+0bfc			 
+0bfc			; set the address to place text at X/Y coordinate 
+0bfc			;       A = X 
+0bfc			;       E = Y 
+0bfc			TmsTextPos: 
+0bfc 16 00		        ld      d, 0 
+0bfe 21 00 00		        ld      hl, 0 
+0c01 19			        add     hl, de                  ; Y x 1 
+0c02 29			        add     hl, hl                  ; Y x 2 
+0c03 29			        add     hl, hl                  ; Y x 4 
+0c04 19			        add     hl, de                  ; Y x 5 
+0c05 29			        add     hl, hl                  ; Y x 10 
+0c06 29			        add     hl, hl                  ; Y x 20 
+0c07 29			        add     hl, hl                  ; Y x 40 
+0c08 5f			        ld      e, a 
+0c09 19			        add     hl, de                  ; add X for final address 
+0c0a ed 5b c5 09	        ld      de, (TmsNameAddr)       ; add name table base address 
+0c0e 19			        add     hl, de 
+0c0f eb			        ex      de, hl 
+0c10 c3 b3 0b		        jp      TmsWriteAddr 
+0c13			 
+0c13			; set the address to place a tile at X/Y coordinate 
+0c13			;       A = X 
+0c13			;       E = Y 
+0c13			TmsTilePos: 
+0c13 16 00		        ld      d, 0 
+0c15 21 00 00		        ld      hl, 0 
+0c18 19			        add     hl, de                  ; Y x 1 
+0c19 29			        add     hl, hl                  ; Y x 2 
+0c1a 29			        add     hl, hl                  ; Y x 4 
+0c1b 29			        add     hl, hl                  ; Y x 8 
+0c1c 29			        add     hl, hl                  ; Y x 16 
+0c1d 29			        add     hl, hl                  ; Y x 32 
+0c1e 5f			        ld      e, a 
+0c1f 19			        add     hl, de                  ; add X for final address 
+0c20 ed 5b c5 09	        ld      de, (TmsNameAddr)       ; add name table base address 
+0c24 19			        add     hl, de 
+0c25 eb			        ex      de, hl 
+0c26 c3 b3 0b		        jp      TmsWriteAddr  
+0c29			 
+0c29			 
+0c29			; copy a null-terminated string to VRAM 
+0c29			;       HL = ram source address 
+0c29			TmsStrOut: 
+0c29 7e			        ld      a, (hl) 
+0c2a fe 00		        cp      0                       ; return when NULL is encountered 
+0c2c c8			        ret     z 
+0c2d cd 1c 0a		        call    TmsRamOut 
+0c30 23			        inc     hl 
+0c31 c3 29 0c		        jp      TmsStrOut 
+0c34			 
+0c34			; repeat a character a certain number of times 
+0c34			;       A = character to output 
+0c34			;       B = count 
+0c34			TmsRepeat: 
+0c34 cd 1c 0a		        call    TmsRamOut 
+0c37 10 fb		        djnz    TmsRepeat 
+0c39 c9			        ret 
+0c3a			 
+0c3a			; output a character 
+0c3a			;       A = character to output 
+0c3a			TmsChrOut:      equ TmsRamOut 
+0c3a			 
+0c3a			; --------------------------------------------------------------------------- 
+0c3a			; bitmap routines 
+0c3a			 
+0c3a			TmsClearPixel:  equ 0A02Fh              ; cpl, and b 
+0c3a			TmsSetPixel:    equ 0B0h                ; nop, or b 
+0c3a			 
+0c3a			; set operation for TmsPlotPixel to perform 
+0c3a			;       HL = pixel operation (TmsClearPixel, TmsSetPixel) 
+0c3a			TmsPixelOp: 
+0c3a 22 5b 0c		        ld      (TmsPixelOpPlaceHolder), hl 
+0c3d c9			        ret 
+0c3e			 
+0c3e			; set or clear pixel at X, Y position 
+0c3e			;       B = Y position 
+0c3e			;       C = X position 
+0c3e			TmsPlotPixel: 
+0c3e 78			        ld      a, b                    ; bail out if Y coord > 191 
+0c3f fe c0		        cp      192 
+0c41 d0			        ret     nc 
+0c42 cd 81 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
+0c45 79			        ld      a, c                    ; get lower 3 bits of X coord 
+0c46 e6 07		        and     7 
+0c48 06 00		        ld      b, 0 
+0c4a 4f			        ld      c, a 
+0c4b 21 65 0c		        ld      hl, TmsMaskLookup       ; address of mask in table 
+0c4e 09			        add     hl, bc 
+0c4f 46			        ld      b, (hl)                 ; save mask in B 
+0c50 2a c9 09		        ld      hl, (TmsPatternAddr)    ; get base address for pattern table 
+0c53 19			        add     hl, de 
+0c54 eb			        ex      de, hl 
+0c55 cd c0 0b		        call    TmsReadAddr             ; set read within pattern table 
+0c58 cd 27 0a		        call    TmsRamIn 
+0c5b			TmsPixelOpPlaceHolder: 
+0c5b b0			        or      b                       ; mask bit in previous byte 
+0c5c 00			        nop                             ; place holder for 2 byte mask operation 
+0c5d f5			        push    af 
+0c5e cd b3 0b		        call    TmsWriteAddr            ; set write address within pattern table 
+0c61 f1			        pop     af 
+0c62 c3 1c 0a		        jp      TmsRamOut 
+0c65			 
+0c65			TmsMaskLookup: 
+0c65 80 40 20 10 08 04 02 01	        defb 80h, 40h, 20h, 10h, 8h, 4h, 2h, 1h 
+0c6d			 
+0c6d			; set the color for a block of pixels in bitmap mode 
+0c6d			;       B = Y position 
+0c6d			;       C = X position 
+0c6d			;       A = foreground/background color to set 
+0c6d			TmsPixelColor: 
+0c6d f5			        push    af 
+0c6e 78			        ld      a, b                    ; bail out if Y coord > 191 
+0c6f fe c0		        cp      192 
+0c71 d0			        ret     nc 
+0c72 cd 81 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
+0c75 2a c7 09		        ld      hl, (TmsColorAddr)      ; add the color table base address 
+0c78 19			        add     hl, de 
+0c79 eb			        ex      de, hl 
+0c7a cd b3 0b		        call    TmsWriteAddr            ; set write address within color table 
+0c7d f1			        pop     af 
+0c7e c3 1c 0a		        jp      TmsRamOut 
+0c81			 
+0c81			; calculate address byte containing X/Y coordinate 
+0c81			;       B = Y position 
+0c81			;       C = X position 
+0c81			;       returns address in DE 
+0c81			TmsXYAddr: 
+0c81 78			        ld      a, b                    ; d = (y / 8) 
+0c82 0f			        rrca 
+0c83 0f			        rrca 
+0c84 0f			        rrca 
+0c85 e6 1f		        and     1fh 
+0c87 57			        ld      d, a 
+0c88			 
+0c88 79			        ld      a, c                    ; e = (x & f8) 
+0c89 e6 f8		        and     0f8h 
+0c8b 5f			        ld      e, a 
+0c8c			 
+0c8c 78			        ld      a, b                    ; e += (y & 7) 
+0c8d e6 07		        and     7 
+0c8f b3			        or      e 
+0c90 5f			        ld      e, a 
+0c91 c9			        ret
+# End of file tms.asm
+0c92			        include "utility.asm" 
+0c92			; BDOS and misc utility routines 
+0c92			; Copyright 2020 J.B. Langston 
+0c92			; 
+0c92			; Permission is hereby granted, free of charge, to any person obtaining a  
+0c92			; copy of this software and associated documentation files (the "Software"),  
+0c92			; to deal in the Software without restriction, including without limitation  
+0c92			; the rights to use, copy, modify, merge, publish, distribute, sublicense,  
+0c92			; and/or sell copies of the Software, and to permit persons to whom the  
+0c92			; Software is furnished to do so, subject to the following conditions: 
+0c92			;  
+0c92			; The above copyright notice and this permission notice shall be included in 
+0c92			; all copies or substantial portions of the Software. 
+0c92			;  
+0c92			; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+0c92			; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  
+0c92			; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+0c92			; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  
+0c92			; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING  
+0c92			; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER  
+0c92			; DEALINGS IN THE SOFTWARE. 
+0c92			 
+0c92			cr:	equ     0dh 
+0c92			lf:	equ     0ah 
+0c92			eos:	equ     '$' 
+0c92			bdos:   equ     5 
+0c92			 
+0c92			; Output A in hexidecimal 
+0c92			hexout: 
+0c92 f5			        push    af 
+0c93 1f			        rra 
+0c94 1f			        rra 
+0c95 1f			        rra 
+0c96 1f			        rra 
+0c97 cd a4 0c		        call    nybhex 
+0c9a cd b8 0c		        call    chrout 
+0c9d f1			        pop     af 
+0c9e cd a4 0c		        call    nybhex 
+0ca1 c3 b8 0c		        jp      chrout 
+0ca4			 
+0ca4			; convert lower nybble of A to hex (also in A) 
+0ca4			; from http://map.grauw.nl/sources/external/z80bits.html#5.1 
+0ca4			nybhex: 
+0ca4 f6 f0		        or      0f0h 
+0ca6 27			        daa 
+0ca7 c6 a0		        add     a, 0a0h 
+0ca9 ce 40		        adc     a, 40h 
+0cab c9			        ret 
+0cac			 
+0cac			space: 
+0cac 3e 20		        ld      a, ' ' 
+0cae c3 b8 0c		        jp      chrout 
+0cb1			 
+0cb1			; output a new line 
+0cb1			crlf: 
+0cb1 3e 0d		        ld      a, cr 
+0cb3 cd b8 0c		        call    chrout 
+0cb6 3e 0a		        ld      a, lf 
+0cb8			        ; fallthrough 
+0cb8			 
+0cb8			; output character in A 
+0cb8			chrout: 
+0cb8 0e 02		        ld      c, 2 
+0cba 5f			        ld      e, a 
+0cbb c3 05 00		        jp      bdos 
+0cbe			 
+0cbe			; output $-terminated string pointed to by DE 
+0cbe			strout: 
+0cbe 0e 09		        ld      c, 9 
+0cc0 c3 05 00		        jp      bdos 
+0cc3			 
+0cc3			; check for keypress and clear Z flag if pressed 
+0cc3			keypress: 
+0cc3 0e 06		        ld      c, 6 
+0cc5 1e ff		        ld      e, 0ffh 
+0cc7 cd 05 00		        call    bdos 
+0cca b7			        or      a 
+0ccb c9			        ret 
+0ccc			 
+0ccc			; blocking keypress, return char 
+0ccc			getchar: 
+0ccc cd c3 0c		        call    keypress 
+0ccf ca cc 0c		        jp      z,getchar 
+0cd2 c9			        ret
+# End of file utility.asm
+0cd3			 
+0cd3			TitleMessage:     
+0cd3 .. 00		        defb    "ASCII Character Set", 0 
+0ce7			 
+0ce7			OldSP: 
+0ce7 00 00		        defw 0 
+0ce9 00...		        defs 64 
+0d29			Stack: 
+# End of file ascii.asm
+0d29
