@@ -33,3 +33,11 @@ The games in this repo depend on NABU-LIB developed by DJSures. [https://github.
 ## z80retro-lib
 
 A port of NABU-LIB is available at [https://github.com/linuxplayground/z80retro-lib](https://github.com/linuxplayground/z80retro-lib) and is used in this project to cross-compile these games for the Z80_Retro.  For more inforamtion on the Z80_Retro board see: [https://github.com/Z80-Retro](https://github.com/Z80-Retro)
+
+## Development Guides
+
+More inforamtion on how to set up your development environment and how to build and load the games into the NABU and Z80 Retro platforms can be found in the [docs](docs) folder.
+
+* [docs/BUILD.md](BUILD.md) - General setup and build guide
+* [docs/NABU.md](NABU.md) - How to load the games into the NABU platform
+* [docs/RETRO.md](RETRO.md) - How to load the games into the Z80-Retro platform.
