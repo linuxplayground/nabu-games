@@ -584,18 +584,25 @@ TmsTilePos:
 TmsCharAtLocationBuffer:
         ld      d, 0
         ld      hl, 0
-        add     hl, de                  ; Y x 1
-        add     hl, hl                  ; Y x 2
-        add     hl, hl                  ; Y x 4
-        add     hl, hl                  ; Y x 8
-        add     hl, hl                  ; Y x 16
-        add     hl, hl                  ; Y x 32
+        sla     e
+        sla     e
+        sla     e
+        sla     e
+        sla     e
+        ld      l,e
         ld      e, a
         add     hl, de                  ; add X for final address
         ld      de, FrameBuf            ; add name table base address
         add     hl, de                  ; HL is the address inside the frame buffer
         ld      (hl),c                  ; store the char into the buffer at the address pointed to by HL.
         ret
+
+; Flush the framebuffer to the screen by doing a copy.
+TmsFlushFrameBuffer:
+        ld      hl,FrameBuf
+        ld      de,(TmsNameAddr)
+        ld      bc,0x300
+        jp      TmsWrite
 
 ; copy a null-terminated string to VRAM
 ;       HL = ram source address
@@ -702,4 +709,4 @@ TmsXYAddr:
         ret
 
 FrameBuf:
-        defs 0x300                              ; define a 0x300 buffer for the tiles.
+        defs 0x300                              ; define a 0x300 buffer for the tiles. Defaults to 0

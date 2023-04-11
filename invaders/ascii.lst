@@ -13,8 +13,8 @@
 0000			 
 0000			        org     100h 
 0100			 
-0100 ed 73 e7 0c	        ld      (OldSP),sp                      ; save old Stack poitner 
-0104 31 29 0d		        ld      sp, Stack                       ; set up Stack 
+0100 ed 73 0c 10	        ld      (OldSP),sp                      ; save old Stack poitner 
+0104 31 4e 10		        ld      sp, Stack                       ; set up Stack 
 0107			 
 0107 cd d3 09		        call    TmsSetWait                      ; set VDP wait loop based on clock multiple 
 010a			 
@@ -34,8 +34,8 @@
 0123 3e 0b		        ld      a, 11                           ; put title at 11, 1 
 0125 1e 02		        ld      e, 2 
 0127 cd fc 0b		        call    TmsTextPos 
-012a 21 d3 0c		        ld      hl, TitleMessage                ; output title 
-012d cd 29 0c		        call    TmsStrOut 
+012a 21 f8 0f		        ld      hl, TitleMessage                ; output title 
+012d cd 4e 0c		        call    TmsStrOut 
 0130			 
 0130 3e 00		        ld      a, 0                            ; start at character 0 
 0132 06 20		        ld      b, LineLen                      ; 32 chars per line 
@@ -60,14 +60,14 @@
 014f c3 37 01		        jp      NextLine                        ; do the BorderLoop line 
 0152			 
 0152			Exit: 
-0152 cd cc 0c		        call    getchar 
-0155 ed 7b e7 0c	        ld      sp, (OldSP) 
+0152 cd f1 0f		        call    getchar 
+0155 ed 7b 0c 10	        ld      sp, (OldSP) 
 0159 c7			        rst     0 
 015a			 
 015a			NoTmsMessage: 
 015a ..			        defb    "TMS9918A not found, aborting!$" 
 0178 11 5a 01		NoTms:  ld      de, NoTmsMessage 
-017b cd be 0c		        call    strout 
+017b cd e3 0f		        call    strout 
 017e c3 52 01		        jp      Exit 
 0181			 
 0181			TextBorder: 
@@ -78,7 +78,7 @@
 018a cd 1c 0a		        call    TmsChrOut 
 018d 06 26		        ld      b, 38                           ; output top border 
 018f 3e cd		        ld      a, DoubleHorizontal 
-0191 cd 34 0c		        call    TmsRepeat 
+0191 cd 59 0c		        call    TmsRepeat 
 0194 3e bb		        ld      a, DoubleTopRight               ; output corner 
 0196 cd 1c 0a		        call    TmsChrOut 
 0199 0e 16		        ld      c, 22                           ; output left/right borders for 22 lines 
@@ -87,7 +87,7 @@
 019d cd 1c 0a		        call    TmsChrOut 
 01a0 3e 20		        ld      a, ' '                          ; space 
 01a2 06 26		        ld      b, 38 
-01a4 cd 34 0c		        call    TmsRepeat 
+01a4 cd 59 0c		        call    TmsRepeat 
 01a7 3e ba		        ld      a, DoubleVertical               ; vertical border 
 01a9 cd 1c 0a		        call    TmsChrOut 
 01ac 0d			        dec     c 
@@ -96,7 +96,7 @@
 01b1 cd 1c 0a		        call    TmsChrOut 
 01b4 3e cd		        ld      a, DoubleHorizontal 
 01b6 06 26		        ld      b, 38 
-01b8 cd 34 0c		        call    TmsRepeat 
+01b8 cd 59 0c		        call    TmsRepeat 
 01bb 3e bc		        ld      a, DoubleBottomRight 
 01bd cd 1c 0a		        call    TmsChrOut 
 01c0 c9			        ret 
@@ -3247,203 +3247,232 @@
 0c25 eb			        ex      de, hl 
 0c26 c3 b3 0b		        jp      TmsWriteAddr  
 0c29			 
-0c29			 
-0c29			; copy a null-terminated string to VRAM 
-0c29			;       HL = ram source address 
-0c29			TmsStrOut: 
-0c29 7e			        ld      a, (hl) 
-0c2a fe 00		        cp      0                       ; return when NULL is encountered 
-0c2c c8			        ret     z 
-0c2d cd 1c 0a		        call    TmsRamOut 
-0c30 23			        inc     hl 
-0c31 c3 29 0c		        jp      TmsStrOut 
-0c34			 
-0c34			; repeat a character a certain number of times 
-0c34			;       A = character to output 
-0c34			;       B = count 
-0c34			TmsRepeat: 
-0c34 cd 1c 0a		        call    TmsRamOut 
-0c37 10 fb		        djnz    TmsRepeat 
-0c39 c9			        ret 
-0c3a			 
-0c3a			; output a character 
-0c3a			;       A = character to output 
-0c3a			TmsChrOut:      equ TmsRamOut 
-0c3a			 
-0c3a			; --------------------------------------------------------------------------- 
-0c3a			; bitmap routines 
-0c3a			 
-0c3a			TmsClearPixel:  equ 0A02Fh              ; cpl, and b 
-0c3a			TmsSetPixel:    equ 0B0h                ; nop, or b 
-0c3a			 
-0c3a			; set operation for TmsPlotPixel to perform 
-0c3a			;       HL = pixel operation (TmsClearPixel, TmsSetPixel) 
-0c3a			TmsPixelOp: 
-0c3a 22 5b 0c		        ld      (TmsPixelOpPlaceHolder), hl 
-0c3d c9			        ret 
-0c3e			 
-0c3e			; set or clear pixel at X, Y position 
-0c3e			;       B = Y position 
-0c3e			;       C = X position 
-0c3e			TmsPlotPixel: 
-0c3e 78			        ld      a, b                    ; bail out if Y coord > 191 
-0c3f fe c0		        cp      192 
-0c41 d0			        ret     nc 
-0c42 cd 81 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
-0c45 79			        ld      a, c                    ; get lower 3 bits of X coord 
-0c46 e6 07		        and     7 
-0c48 06 00		        ld      b, 0 
-0c4a 4f			        ld      c, a 
-0c4b 21 65 0c		        ld      hl, TmsMaskLookup       ; address of mask in table 
-0c4e 09			        add     hl, bc 
-0c4f 46			        ld      b, (hl)                 ; save mask in B 
-0c50 2a c9 09		        ld      hl, (TmsPatternAddr)    ; get base address for pattern table 
-0c53 19			        add     hl, de 
-0c54 eb			        ex      de, hl 
-0c55 cd c0 0b		        call    TmsReadAddr             ; set read within pattern table 
-0c58 cd 27 0a		        call    TmsRamIn 
-0c5b			TmsPixelOpPlaceHolder: 
-0c5b b0			        or      b                       ; mask bit in previous byte 
-0c5c 00			        nop                             ; place holder for 2 byte mask operation 
-0c5d f5			        push    af 
-0c5e cd b3 0b		        call    TmsWriteAddr            ; set write address within pattern table 
-0c61 f1			        pop     af 
-0c62 c3 1c 0a		        jp      TmsRamOut 
-0c65			 
-0c65			TmsMaskLookup: 
-0c65 80 40 20 10 08 04 02 01	        defb 80h, 40h, 20h, 10h, 8h, 4h, 2h, 1h 
-0c6d			 
-0c6d			; set the color for a block of pixels in bitmap mode 
-0c6d			;       B = Y position 
-0c6d			;       C = X position 
-0c6d			;       A = foreground/background color to set 
-0c6d			TmsPixelColor: 
-0c6d f5			        push    af 
-0c6e 78			        ld      a, b                    ; bail out if Y coord > 191 
-0c6f fe c0		        cp      192 
-0c71 d0			        ret     nc 
-0c72 cd 81 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
-0c75 2a c7 09		        ld      hl, (TmsColorAddr)      ; add the color table base address 
+0c29			; set the address to place a tile at X/Y coordinate into the framebuffer 
+0c29			;       A = X 
+0c29			;       E = Y 
+0c29			;       C = Char 
+0c29			TmsCharAtLocationBuffer: 
+0c29 16 00		        ld      d, 0 
+0c2b 21 00 00		        ld      hl, 0 
+0c2e cb 23		        sla     e 
+0c30 cb 23		        sla     e 
+0c32 cb 23		        sla     e 
+0c34 cb 23		        sla     e 
+0c36 cb 23		        sla     e 
+0c38 6b			        ld      l,e 
+0c39 5f			        ld      e, a 
+0c3a 19			        add     hl, de                  ; add X for final address 
+0c3b 11 b7 0c		        ld      de, FrameBuf            ; add name table base address 
+0c3e 19			        add     hl, de                  ; HL is the address inside the frame buffer 
+0c3f 71			        ld      (hl),c                  ; store the char into the buffer at the address pointed to by HL. 
+0c40 c9			        ret 
+0c41			 
+0c41			; Flush the framebuffer to the screen by doing a copy. 
+0c41			TmsFlushFrameBuffer: 
+0c41 21 b7 0c		        ld      hl,FrameBuf 
+0c44 ed 5b c5 09	        ld      de,(TmsNameAddr) 
+0c48 01 00 03		        ld      bc,0x300 
+0c4b c3 cb 0b		        jp      TmsWrite 
+0c4e			 
+0c4e			; copy a null-terminated string to VRAM 
+0c4e			;       HL = ram source address 
+0c4e			TmsStrOut: 
+0c4e 7e			        ld      a, (hl) 
+0c4f fe 00		        cp      0                       ; return when NULL is encountered 
+0c51 c8			        ret     z 
+0c52 cd 1c 0a		        call    TmsRamOut 
+0c55 23			        inc     hl 
+0c56 c3 4e 0c		        jp      TmsStrOut 
+0c59			 
+0c59			; repeat a character a certain number of times 
+0c59			;       A = character to output 
+0c59			;       B = count 
+0c59			TmsRepeat: 
+0c59 cd 1c 0a		        call    TmsRamOut 
+0c5c 10 fb		        djnz    TmsRepeat 
+0c5e c9			        ret 
+0c5f			 
+0c5f			; output a character 
+0c5f			;       A = character to output 
+0c5f			TmsChrOut:      equ TmsRamOut 
+0c5f			 
+0c5f			; --------------------------------------------------------------------------- 
+0c5f			; bitmap routines 
+0c5f			 
+0c5f			TmsClearPixel:  equ 0A02Fh              ; cpl, and b 
+0c5f			TmsSetPixel:    equ 0B0h                ; nop, or b 
+0c5f			 
+0c5f			; set operation for TmsPlotPixel to perform 
+0c5f			;       HL = pixel operation (TmsClearPixel, TmsSetPixel) 
+0c5f			TmsPixelOp: 
+0c5f 22 80 0c		        ld      (TmsPixelOpPlaceHolder), hl 
+0c62 c9			        ret 
+0c63			 
+0c63			; set or clear pixel at X, Y position 
+0c63			;       B = Y position 
+0c63			;       C = X position 
+0c63			TmsPlotPixel: 
+0c63 78			        ld      a, b                    ; bail out if Y coord > 191 
+0c64 fe c0		        cp      192 
+0c66 d0			        ret     nc 
+0c67 cd a6 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
+0c6a 79			        ld      a, c                    ; get lower 3 bits of X coord 
+0c6b e6 07		        and     7 
+0c6d 06 00		        ld      b, 0 
+0c6f 4f			        ld      c, a 
+0c70 21 8a 0c		        ld      hl, TmsMaskLookup       ; address of mask in table 
+0c73 09			        add     hl, bc 
+0c74 46			        ld      b, (hl)                 ; save mask in B 
+0c75 2a c9 09		        ld      hl, (TmsPatternAddr)    ; get base address for pattern table 
 0c78 19			        add     hl, de 
 0c79 eb			        ex      de, hl 
-0c7a cd b3 0b		        call    TmsWriteAddr            ; set write address within color table 
-0c7d f1			        pop     af 
-0c7e c3 1c 0a		        jp      TmsRamOut 
-0c81			 
-0c81			; calculate address byte containing X/Y coordinate 
-0c81			;       B = Y position 
-0c81			;       C = X position 
-0c81			;       returns address in DE 
-0c81			TmsXYAddr: 
-0c81 78			        ld      a, b                    ; d = (y / 8) 
-0c82 0f			        rrca 
-0c83 0f			        rrca 
-0c84 0f			        rrca 
-0c85 e6 1f		        and     1fh 
-0c87 57			        ld      d, a 
-0c88			 
-0c88 79			        ld      a, c                    ; e = (x & f8) 
-0c89 e6 f8		        and     0f8h 
-0c8b 5f			        ld      e, a 
-0c8c			 
-0c8c 78			        ld      a, b                    ; e += (y & 7) 
-0c8d e6 07		        and     7 
-0c8f b3			        or      e 
-0c90 5f			        ld      e, a 
-0c91 c9			        ret
-# End of file tms.asm
-0c92			        include "utility.asm" 
-0c92			; BDOS and misc utility routines 
-0c92			; Copyright 2020 J.B. Langston 
-0c92			; 
-0c92			; Permission is hereby granted, free of charge, to any person obtaining a  
-0c92			; copy of this software and associated documentation files (the "Software"),  
-0c92			; to deal in the Software without restriction, including without limitation  
-0c92			; the rights to use, copy, modify, merge, publish, distribute, sublicense,  
-0c92			; and/or sell copies of the Software, and to permit persons to whom the  
-0c92			; Software is furnished to do so, subject to the following conditions: 
-0c92			;  
-0c92			; The above copyright notice and this permission notice shall be included in 
-0c92			; all copies or substantial portions of the Software. 
-0c92			;  
-0c92			; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-0c92			; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  
-0c92			; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-0c92			; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  
-0c92			; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING  
-0c92			; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER  
-0c92			; DEALINGS IN THE SOFTWARE. 
+0c7a cd c0 0b		        call    TmsReadAddr             ; set read within pattern table 
+0c7d cd 27 0a		        call    TmsRamIn 
+0c80			TmsPixelOpPlaceHolder: 
+0c80 b0			        or      b                       ; mask bit in previous byte 
+0c81 00			        nop                             ; place holder for 2 byte mask operation 
+0c82 f5			        push    af 
+0c83 cd b3 0b		        call    TmsWriteAddr            ; set write address within pattern table 
+0c86 f1			        pop     af 
+0c87 c3 1c 0a		        jp      TmsRamOut 
+0c8a			 
+0c8a			TmsMaskLookup: 
+0c8a 80 40 20 10 08 04 02 01	        defb 80h, 40h, 20h, 10h, 8h, 4h, 2h, 1h 
 0c92			 
-0c92			cr:	equ     0dh 
-0c92			lf:	equ     0ah 
-0c92			eos:	equ     '$' 
-0c92			bdos:   equ     5 
-0c92			 
-0c92			; Output A in hexidecimal 
-0c92			hexout: 
+0c92			; set the color for a block of pixels in bitmap mode 
+0c92			;       B = Y position 
+0c92			;       C = X position 
+0c92			;       A = foreground/background color to set 
+0c92			TmsPixelColor: 
 0c92 f5			        push    af 
-0c93 1f			        rra 
-0c94 1f			        rra 
-0c95 1f			        rra 
-0c96 1f			        rra 
-0c97 cd a4 0c		        call    nybhex 
-0c9a cd b8 0c		        call    chrout 
-0c9d f1			        pop     af 
-0c9e cd a4 0c		        call    nybhex 
-0ca1 c3 b8 0c		        jp      chrout 
-0ca4			 
-0ca4			; convert lower nybble of A to hex (also in A) 
-0ca4			; from http://map.grauw.nl/sources/external/z80bits.html#5.1 
-0ca4			nybhex: 
-0ca4 f6 f0		        or      0f0h 
-0ca6 27			        daa 
-0ca7 c6 a0		        add     a, 0a0h 
-0ca9 ce 40		        adc     a, 40h 
-0cab c9			        ret 
-0cac			 
-0cac			space: 
-0cac 3e 20		        ld      a, ' ' 
-0cae c3 b8 0c		        jp      chrout 
+0c93 78			        ld      a, b                    ; bail out if Y coord > 191 
+0c94 fe c0		        cp      192 
+0c96 d0			        ret     nc 
+0c97 cd a6 0c		        call    TmsXYAddr               ; get address in DE for X/Y coord in BC 
+0c9a 2a c7 09		        ld      hl, (TmsColorAddr)      ; add the color table base address 
+0c9d 19			        add     hl, de 
+0c9e eb			        ex      de, hl 
+0c9f cd b3 0b		        call    TmsWriteAddr            ; set write address within color table 
+0ca2 f1			        pop     af 
+0ca3 c3 1c 0a		        jp      TmsRamOut 
+0ca6			 
+0ca6			; calculate address byte containing X/Y coordinate 
+0ca6			;       B = Y position 
+0ca6			;       C = X position 
+0ca6			;       returns address in DE 
+0ca6			TmsXYAddr: 
+0ca6 78			        ld      a, b                    ; d = (y / 8) 
+0ca7 0f			        rrca 
+0ca8 0f			        rrca 
+0ca9 0f			        rrca 
+0caa e6 1f		        and     1fh 
+0cac 57			        ld      d, a 
+0cad			 
+0cad 79			        ld      a, c                    ; e = (x & f8) 
+0cae e6 f8		        and     0f8h 
+0cb0 5f			        ld      e, a 
 0cb1			 
-0cb1			; output a new line 
-0cb1			crlf: 
-0cb1 3e 0d		        ld      a, cr 
-0cb3 cd b8 0c		        call    chrout 
-0cb6 3e 0a		        ld      a, lf 
-0cb8			        ; fallthrough 
-0cb8			 
-0cb8			; output character in A 
-0cb8			chrout: 
-0cb8 0e 02		        ld      c, 2 
-0cba 5f			        ld      e, a 
-0cbb c3 05 00		        jp      bdos 
-0cbe			 
-0cbe			; output $-terminated string pointed to by DE 
-0cbe			strout: 
-0cbe 0e 09		        ld      c, 9 
-0cc0 c3 05 00		        jp      bdos 
-0cc3			 
-0cc3			; check for keypress and clear Z flag if pressed 
-0cc3			keypress: 
-0cc3 0e 06		        ld      c, 6 
-0cc5 1e ff		        ld      e, 0ffh 
-0cc7 cd 05 00		        call    bdos 
-0cca b7			        or      a 
-0ccb c9			        ret 
-0ccc			 
-0ccc			; blocking keypress, return char 
-0ccc			getchar: 
-0ccc cd c3 0c		        call    keypress 
-0ccf ca cc 0c		        jp      z,getchar 
-0cd2 c9			        ret
+0cb1 78			        ld      a, b                    ; e += (y & 7) 
+0cb2 e6 07		        and     7 
+0cb4 b3			        or      e 
+0cb5 5f			        ld      e, a 
+0cb6 c9			        ret 
+0cb7			 
+0cb7			FrameBuf: 
+0cb7 00...		        defs 0x300                              ; define a 0x300 buffer for the tiles. Defaults to 0
+# End of file tms.asm
+0fb7			        include "utility.asm" 
+0fb7			; BDOS and misc utility routines 
+0fb7			; Copyright 2020 J.B. Langston 
+0fb7			; 
+0fb7			; Permission is hereby granted, free of charge, to any person obtaining a  
+0fb7			; copy of this software and associated documentation files (the "Software"),  
+0fb7			; to deal in the Software without restriction, including without limitation  
+0fb7			; the rights to use, copy, modify, merge, publish, distribute, sublicense,  
+0fb7			; and/or sell copies of the Software, and to permit persons to whom the  
+0fb7			; Software is furnished to do so, subject to the following conditions: 
+0fb7			;  
+0fb7			; The above copyright notice and this permission notice shall be included in 
+0fb7			; all copies or substantial portions of the Software. 
+0fb7			;  
+0fb7			; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+0fb7			; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  
+0fb7			; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+0fb7			; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  
+0fb7			; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING  
+0fb7			; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER  
+0fb7			; DEALINGS IN THE SOFTWARE. 
+0fb7			 
+0fb7			cr:	equ     0dh 
+0fb7			lf:	equ     0ah 
+0fb7			eos:	equ     '$' 
+0fb7			bdos:   equ     5 
+0fb7			 
+0fb7			; Output A in hexidecimal 
+0fb7			hexout: 
+0fb7 f5			        push    af 
+0fb8 1f			        rra 
+0fb9 1f			        rra 
+0fba 1f			        rra 
+0fbb 1f			        rra 
+0fbc cd c9 0f		        call    nybhex 
+0fbf cd dd 0f		        call    chrout 
+0fc2 f1			        pop     af 
+0fc3 cd c9 0f		        call    nybhex 
+0fc6 c3 dd 0f		        jp      chrout 
+0fc9			 
+0fc9			; convert lower nybble of A to hex (also in A) 
+0fc9			; from http://map.grauw.nl/sources/external/z80bits.html#5.1 
+0fc9			nybhex: 
+0fc9 f6 f0		        or      0f0h 
+0fcb 27			        daa 
+0fcc c6 a0		        add     a, 0a0h 
+0fce ce 40		        adc     a, 40h 
+0fd0 c9			        ret 
+0fd1			 
+0fd1			space: 
+0fd1 3e 20		        ld      a, ' ' 
+0fd3 c3 dd 0f		        jp      chrout 
+0fd6			 
+0fd6			; output a new line 
+0fd6			crlf: 
+0fd6 3e 0d		        ld      a, cr 
+0fd8 cd dd 0f		        call    chrout 
+0fdb 3e 0a		        ld      a, lf 
+0fdd			        ; fallthrough 
+0fdd			 
+0fdd			; output character in A 
+0fdd			chrout: 
+0fdd 0e 02		        ld      c, 2 
+0fdf 5f			        ld      e, a 
+0fe0 c3 05 00		        jp      bdos 
+0fe3			 
+0fe3			; output $-terminated string pointed to by DE 
+0fe3			strout: 
+0fe3 0e 09		        ld      c, 9 
+0fe5 c3 05 00		        jp      bdos 
+0fe8			 
+0fe8			; check for keypress and clear Z flag if pressed 
+0fe8			keypress: 
+0fe8 0e 06		        ld      c, 6 
+0fea 1e ff		        ld      e, 0ffh 
+0fec cd 05 00		        call    bdos 
+0fef b7			        or      a 
+0ff0 c9			        ret 
+0ff1			 
+0ff1			; blocking keypress, return char 
+0ff1			getchar: 
+0ff1 cd e8 0f		        call    keypress 
+0ff4 ca f1 0f		        jp      z,getchar 
+0ff7 c9			        ret 
 # End of file utility.asm
-0cd3			 
-0cd3			TitleMessage:     
-0cd3 .. 00		        defb    "ASCII Character Set", 0 
-0ce7			 
-0ce7			OldSP: 
-0ce7 00 00		        defw 0 
-0ce9 00...		        defs 64 
-0d29			Stack: 
+0ff8			 
+0ff8			TitleMessage:     
+0ff8 .. 00		        defb    "ASCII Character Set", 0 
+100c			 
+100c			OldSP: 
+100c 00 00		        defw 0 
+100e 00...		        defs 64 
+104e			Stack: 
 # End of file ascii.asm
-0d29
+104e

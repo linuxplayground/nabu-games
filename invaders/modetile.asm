@@ -6,6 +6,11 @@
 ;
 
         org     100h
+
+.bufx:  defb 0x00
+.bufy:  defb 0x00
+.bufc:  defb 0x00
+
 main:
         ld      (OldSP),sp                      ; save old Stack poitner
         ld      sp, Stack                       ; set up Stack
@@ -28,24 +33,29 @@ main:
         call    TmsBackground
 
         ; load all colours to Dark Red on Black
-        ld      a,(TmsDarkRed<<4)|TmsBlack
+        ld      a,(TmsDarkBlue<<4)|TmsBlack
         ld      de,(TmsColorAddr)
         ld      bc,0x300
         call    TmsFill
 
+.start:
         ; Load all name cells to be 00
-        ld      a,0x00
+        or      a
+        ld      (.bufc),a
+
+.loop:
+        call    keypress
+        jp      nz,Exit
+        ld      a,(.bufc)
         ld      de,(TmsNameAddr)
         ld      bc,0x300
         call    TmsFill
-
-        ; test set cursor
-        ld      a,16
-        ld      e,12
-        call    TmsTilePos
-        ; test write a char.
-        ld      a,'A'
-        call    TmsChrOut
+        ld      a,(.bufc)
+        inc     a
+        cp      0xFF
+        jp      z,.start
+        ld      (.bufc),a
+        jp      .loop
 Exit:
         call    getchar
         ld      sp, (OldSP)
