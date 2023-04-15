@@ -1,6 +1,6 @@
 **/*.lis
 **/*.map
-**/make.local*
+**/*.local
 **/*.COM
 **/*.com
 **/*.nabu

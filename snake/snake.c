@@ -10,6 +10,18 @@
 
 FILE * fp;
 
+void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
+    uint16_t offset = y * _vdpCursorMaxXFull + x;
+    uint8_t *start = text;
+
+    while (*start != 0x00) {
+
+      _vdp_textBuffer[offset] = *start;
+      offset++;
+      start++;
+    }
+}
+
 /* Fetch the high score from disk*/
 uint16_t getHighScore() {
     int hs;
@@ -41,9 +53,7 @@ void setHighScore(uint16_t hs) {
 
 /* Write some text on the screen centered and at y location.*/
 void centerText(char *text, uint8_t y) {
-    vdp_setCursor2(abs(15-(strlen(text)/2)),y);
-    vdp_waitVDPReadyInt();
-    vdp_print(text);
+    printAtLocationBuf(abs(15-(strlen(text)/2)),y,text);
 }
 
 /* Set up the graphics, audio and vdp interrupts.*/
@@ -72,18 +82,25 @@ void init() {
 
 /* Display the menu and then wait for the user to either exit (false) or continue (true)*/
 bool menu() {
+    vdp_waitVDPReadyInt();
+    uint8_t tmp = IO_VDPLATCH;  //dummy read
     vdp_clearScreen();
 
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.3",4);
+    centerText("SNAKE - V3.4",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("JOYSTICK ONLY",8);
     centerText("BTN TO PLAY AGAIN",11);
     centerText(score_str,13);
     centerText(high_score_str,14);
     centerText("ESC TO QUIT",16);
+
+    vdp_waitVDPReadyInt();
+    tmp = IO_VDPLATCH;  //dummy read
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort(); 
     while(true) {
         if (getJoyStatus(0) & Joy_Button)
             return true;
@@ -221,21 +238,19 @@ void game() {
             }
             vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
         } else { //if not paused
-            //Get user input one time only. Flag if the user has moved.
-            uint8_t js = getJoyStatus(0);
-            if( (js & Joy_Left) && (head.dir != HEAD_RIGHT)) {
+            if( (getJoyStatus(0) & Joy_Left) && (head.dir != HEAD_RIGHT)) {
                 head.dir = HEAD_LEFT;
                 head.pattern = HEAD_LEFT;
             }
-            else if( (js & Joy_Up) && (head.dir != HEAD_DOWN)) {
+            else if( (getJoyStatus(0) & Joy_Up) && (head.dir != HEAD_DOWN)) {
                 head.dir = HEAD_UP;
                 head.pattern = HEAD_UP;
             }
-            else if( (js & Joy_Right) && (head.dir != HEAD_LEFT)) {
+            else if( (getJoyStatus(0) & Joy_Right) && (head.dir != HEAD_LEFT)) {
                 head.dir = HEAD_RIGHT;
                 head.pattern = HEAD_RIGHT;
             }
-            else if( (js & Joy_Down) && (head.dir != HEAD_UP)) {
+            else if( (getJoyStatus(0) & Joy_Down) && (head.dir != HEAD_UP)) {
                 head.dir = HEAD_DOWN;
                 head.pattern = HEAD_DOWN;
             }

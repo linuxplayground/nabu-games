@@ -46,7 +46,7 @@ make world
 
 This will delete all the binary objects, disk images and other artifacts from within the build directory structure and compile everything from scratch.
 
-You will find a `drive.img` file target at slot 3 for burining to your SD card in `build/retro/drive.img`
+You will find a `drive.img` which you can write on to your SD Card in `build/retro/drive.img`.  See: [RETRO.md](RETRO.md) for details.
 
 At this point you can go ahead and use the makefile rules in `build/retro` to burn to your SD Drive.  Just make sure you have the appropriate overrides configured in `Make.local`.  For more inforamtion checkout John Winan's YouTube video: [https://www.youtube.com/watch?v=H4XypSs2wRA](https://www.youtube.com/watch?v=H4XypSs2wRA)
 
