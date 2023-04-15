@@ -440,6 +440,8 @@ void play() {
 
             sprintf(tb8, "%d", level);
             printAtLocationBuf(20,21,tb8);
+            vdp_waitVDPReadyInt();
+            uint8_t tmp = IO_VDPLATCH; //Skip a frame. this clearing lines business is pretty slow.
         }
         clearTet(21, 3, n, 0);  //clear the next block ready for the new one.
         t = n;

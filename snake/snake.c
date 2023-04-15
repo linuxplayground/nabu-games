@@ -82,6 +82,8 @@ void init() {
 
 /* Display the menu and then wait for the user to either exit (false) or continue (true)*/
 bool menu() {
+    vdp_waitVDPReadyInt();
+    uint8_t tmp = IO_VDPLATCH;  //dummy read
     vdp_clearScreen();
 
     sprintf(score_str,      "SCORE:      %03d", score);
@@ -94,6 +96,9 @@ bool menu() {
     centerText(score_str,13);
     centerText(high_score_str,14);
     centerText("ESC TO QUIT",16);
+
+    vdp_waitVDPReadyInt();
+    tmp = IO_VDPLATCH;  //dummy read
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort(); 
     while(true) {
