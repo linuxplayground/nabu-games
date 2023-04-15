@@ -54,6 +54,18 @@ void initDisplay() {
     vdp_setBackDropColor(VDP_DARK_YELLOW);          //Set border color
 }
 
+void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
+    uint16_t offset = y * _vdpCursorMaxXFull + x;
+    uint8_t *start = text;
+
+    while (*start != 0x00) {
+
+      _vdp_textBuffer[offset] = *start;
+      offset++;
+      start++;
+    }
+}
+
 void setupMap() {
     //plot the map graphics
     uint8_t col = 7;
@@ -73,19 +85,15 @@ void setupMap() {
     vdp_refreshViewPort();
 
     //write the static words
-    vdp_setCursor2(19,1);
-    vdp_print("NEXT");
-    vdp_setCursor2(19,8);
-    vdp_print("SCORE");
-    vdp_setCursor2(19,12);
-    vdp_print("H.SCORE");
-    vdp_setCursor2(19,16);
-    vdp_print("LINES");
-    vdp_setCursor2(19,20);
-    vdp_print("LEVEL");
+    printAtLocationBuf(19,1,"NEXT");
+    printAtLocationBuf(19,8,"SCORE");
+    printAtLocationBuf(19,12,"H.SCORE");
+    printAtLocationBuf(19,16,"LINES");
+    printAtLocationBuf(19,20,"LEVEL");
     sprintf(tb16, "%d", high_score);
-    vdp_setCursor2(20,14);
-    vdp_print(tb16);
+    printAtLocationBuf(20,14,tb16);
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort();
 }
 
 void displayTet(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
@@ -133,7 +141,7 @@ void clearPlayArea() {
     }
 }
 
-void clearLinesAndDropDown(uint8_t line_num) {
+void clearLinesAndDropDown(uint8_t line_num) __z88dk_fastcall {
     for( uint8_t j = 8; j < 18; j ++ ) {
         vdp_setCharAtLocationBuf(j, line_num, 0x20);
     }
@@ -148,7 +156,7 @@ void clearLinesAndDropDown(uint8_t line_num) {
     }
 }
 
-uint8_t checkCompletedLines(uint8_t *lines) {
+uint8_t checkCompletedLines(uint8_t *lines) __z88dk_fastcall {
     uint8_t completed_lines = 0;
     bool complete;
     for( uint8_t i = 1; i<23; i++) {
@@ -206,7 +214,7 @@ uint16_t getHighScore() {
     return hs;
 }
 
-void setHighScore(uint16_t hs) {
+void setHighScore(uint16_t hs) __z88dk_fastcall {
     #if BIN_TYPE == BIN_CPM
         FILE * fp = fopen("tetris.dat", "w");
         fprintf(fp, "%d", hs);
@@ -236,20 +244,16 @@ void play() {
     uint8_t dn_state = 0;
 
     sprintf(tb8, "%d", cleared_lines);
-    vdp_setCursor2(20,18);
-    vdp_print(tb8);
+    printAtLocationBuf(20,18,tb8);
 
     sprintf(tb16, "%d", score);
-    vdp_setCursor2(20,10);
-    vdp_print(tb16);
-
+    printAtLocationBuf(20,10,tb16);
+    
     sprintf(tb16, "%d", high_score);
-    vdp_setCursor2(20,14);
-    vdp_print(tb16);
+    printAtLocationBuf(20,14,tb16);
 
     sprintf(tb8, "%d", level);
-    vdp_setCursor2(20,21);
-    vdp_print(tb8);
+    printAtLocationBuf(20,21,tb8);
 
     while (running) {
         n = new_block();
@@ -426,20 +430,16 @@ void play() {
             }
 
             sprintf(tb16, "%d", score);
-            vdp_setCursor2(20,10);
-            vdp_print(tb16);
+            printAtLocationBuf(20,10,tb16);
 
             sprintf(tb16, "%d", high_score);
-            vdp_setCursor2(20,14);
-            vdp_print(tb16);
+            printAtLocationBuf(20,14,tb16);
 
             sprintf(tb8, "%d", cleared_lines);
-            vdp_setCursor2(20,18);
-            vdp_print(tb8);
+            printAtLocationBuf(20,18,tb8);
 
             sprintf(tb8, "%d", level);
-            vdp_setCursor2(20,21);
-            vdp_print(tb8);
+            printAtLocationBuf(20,21,tb8);
         }
         clearTet(21, 3, n, 0);  //clear the next block ready for the new one.
         t = n;
@@ -455,11 +455,11 @@ void play() {
         high_score = score;
     }
     sprintf(tb16, "%d", score);
-    vdp_setCursor2(20,10);
-    vdp_print(tb16);
+    printAtLocationBuf(20,10,tb16);
+
     sprintf(tb16, "%d", high_score);
-    vdp_setCursor2(20,14);
-    vdp_print(tb16);
+    printAtLocationBuf(20,14,tb16);
+
     nt_stopSounds();
     uint16_t timer = 0;
     while (timer < 180) { //3 seconds
@@ -474,32 +474,21 @@ bool menu() {
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
-    vdp_setCursor2(13-(9/2),3);
-    vdp_print("PRESS KEY");
-    vdp_setCursor2(13-(8/2),4);
-    vdp_print("TO START");
-    vdp_setCursor2(13-(10/2),7);
-    vdp_print(",(<)  LEFT");
-    vdp_setCursor2(13-(10/2),8);
-    vdp_print(".(>) RIGHT");
-    vdp_setCursor2(13-(9/2),9);
-    vdp_print("X & Z ROT");
-    vdp_setCursor2(13-(10/2),10);
-    vdp_print("SPACE DROP");
-    vdp_setCursor2(13-(8/2) ,12);
-    vdp_print("JOYSTICK");
-    vdp_setCursor2(13-(10/2) ,13);
-    vdp_print("BTN ROTATE");
-    vdp_setCursor2(13-(9/2) ,14);
-    vdp_print("DOWN DROP");
-    vdp_setCursor2(13-(8/2),17);
-    vdp_print("ESC QUIT");
-    vdp_setCursor2(13-(10/2),19);
-    vdp_print("PRODUCTION");
-    vdp_setCursor2(13-(4/2),20);
-    vdp_print("DAVE");
-    vdp_setCursor2(13-(4/2),21);
-    vdp_print("V3.3");
+    printAtLocationBuf(13-(9/2),3, "PRESS KEY");
+    printAtLocationBuf(13-(8/2),4,"TO START");
+    printAtLocationBuf(13-(10/2),7,",(<)  LEFT");
+    printAtLocationBuf(13-(10/2),8,".(>) RIGHT");
+    printAtLocationBuf(13-(9/2),9,"X & Z ROT");
+    printAtLocationBuf(13-(10/2),10,"SPACE DROP");
+    printAtLocationBuf(13-(8/2),12,"JOYSTICK");
+    printAtLocationBuf(13-(10/2),13,"BTN ROTATE");
+    printAtLocationBuf(13-(9/2),14,"DOWN DROP");
+    printAtLocationBuf(13-(8/2),17,"ESC QUIT");
+    printAtLocationBuf(13-(10/2),19,"PRODUCTION");
+    printAtLocationBuf(13-(4/2),20,"DAVE");
+    printAtLocationBuf(13-(4/2),21,"V3.4");
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort();
 
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {
