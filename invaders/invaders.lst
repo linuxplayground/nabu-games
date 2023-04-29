@@ -1,0 +1,757 @@
+# File invaders.asm
+0000			; space invaders clone 
+0000			; to work on tms9918a graphics and designed for the nabu. 
+0000			        include 'macros.asm' 
+0000			addhla: macro 
+0000			        add     a, l    ; A = A+L 
+0000			        ld      l, a    ; L = A+L 
+0000			        adc     a, h    ; A = A+L+H+carry 
+0000			        sub     l       ; A = H+carry 
+0000			        ld      h, a    ; H = H+carry 
+0000			endm 
+0000			 
+0000			adddea: macro 
+0000			        add     a, e    ; A = A+E 
+0000			        ld      e, a    ; L = A+E 
+0000			        adc     a, d    ; A = A+E+D+carry 
+0000			        sub     e       ; A = D+carry 
+0000			        ld      d, a    ; D = D+carry 
+0000			endm 
+0000			 
+0000			mul16: macro 
+0000			        add     a,a     ; x2 
+0000			        add     a,a     ; x4 
+0000			        add     a,a     ; x8 
+0000			        add     a,a     ; x16 
+0000			endm 
+0000			 
+0000			mul32: macro 
+0000			        add     hl,hl 
+0000			        add     hl,hl 
+0000			        add     hl,hl 
+0000			        add     hl,hl 
+0000			        add     hl,hl   ; x32 
+0000			endm 
+0000			 
+0000			; copy data from HL to DE BC times. 
+0000			memcpy: macro source destination count 
+0000			        ld      hl, source 
+0000			        ld      de, destination 
+0000			        ld      bc, count 
+0000			        ldir 
+0000			endm 
+0000			 
+0000			; fills a block of memory frpm start with value to start + count 
+0000			fillmem: macro start value size 
+0000			        ld      a,value 
+0000			        ld      hl,start 
+0000			        ld      bc,size 
+0000			        call    fillmem 
+0000			endm 
+# End of file macros.asm
+0000			 
+0000			invader_1_pattern_start:  equ     8          ; the first pattern should ramain blank. 
+0000			invader_2_pattern_start:  equ     invader_1_pattern_start + 16  ; second pattern starts 16 bytes later 
+0000			invader_3_pattern_start:  equ     invader_2_pattern_start + 16  ; third pattern 16 bytes after that. 
+0000			 
+0000			; macros 
+0000			tmsdisalbeoutput: macro 
+0000			        ld      d, 0xa0 
+0000			        ld      b, 0x01 
+0000			        call    tms_set_register 
+0000			endm 
+0000			 
+0000			tmsenableoutput: macro 
+0000			        ld      d, 0xe0 
+0000			        ld      b, 0x01 
+0000			        call    tms_set_register 
+0000			endm 
+0000			 
+0000			 
+0000			; _main (i know c style - but it's useful to think of this as the main entry point) 
+0000			        org     0x100 
+0100			 
+0100			; initialization - setup vdp etc. 
+0100 cd ad 01		        call    tms_clear_vram 
+0103 cd 73 01		        call    tms_init_g2 
+0106 cd c5 01		        call    tms_clear_screen 
+0109			 
+0109			        ; ld      b,tms_dark_yellow 
+0109			        ; call    tms_set_backdrop_color 
+0109			 
+0109 06 f1		        ld      b,tms_white<<4|tms_black 
+010b cd 96 01		        call    tms_set_all_colors              ; sets all color table entries to the same value. 
+010e cd 7e 0a		        call    create_invader_pattern_table 
+0111			         
+0111			; init game 
+0111			; set up direction 
+0111 3e 01		        ld      a,1 
+0113 32 70 01		        ld      (x_dir),a 
+0116 32 72 01		        ld      (game_x_offset),a 
+0119			 
+0119			; set up framebuffer 
+0119			        fillmem tms_buffer 0x00 0x300 
+0119 3e 00		        ld      a,0x00 
+011b 21 1e 02		        ld      hl,tms_buffer 
+011e 01 00 03		        ld      bc,0x300 
+0121 cd 32 05		        call    fillmem 
+0124			endm 
+# End of macro fillmem
+0124 cd a2 0a		        call    update_game_field 
+0127 cd a7 01		        call    tms_wait 
+012a cd fe 01		        call    tms_flush_buffer 
+012d			 
+012d			; game loop 
+012d			gameloop: 
+012d cd 1e 05		        call    check_cpm_key 
+0130 3a 6f 01		        ld      a, (ticks) 
+0133 3c			        inc     a 
+0134 fe 14		        cp      20                              ; alien speed - low = fast 
+0136 d2 3f 01		        jp      nc, do_update_game_field 
+0139 32 6f 01		        ld      (ticks),a 
+013c c3 68 01		        jp      end_loop 
+013f			do_update_game_field: 
+013f 3a 70 01		        ld      a,(x_dir) 
+0142 47			        ld      b,a 
+0143 3a 72 01		        ld      a,(game_x_offset) 
+0146 80			        add     a,b 
+0147 fe 20		        cp      32 
+0149 c2 50 01		        jp      nz,flush 
+014c			reset_frame: 
+014c af			        xor     a 
+014d 32 72 01		        ld      (game_x_offset),a 
+0150			flush: 
+0150 32 72 01		        ld      (game_x_offset),a 
+0153 af			        xor     a 
+0154 32 6f 01		        ld      (ticks),a 
+0157			        ; call    hexdump_a 
+0157			        fillmem game_field_buffer_start 0x00 game_field_buffer_size       ; start 2 rows down, fill 10 rows 
+0157 3e 00		        ld      a,0x00 
+0159 21 5e 02		        ld      hl,game_field_buffer_start 
+015c 01 40 01		        ld      bc,game_field_buffer_size 
+015f cd 32 05		        call    fillmem 
+0162			endm 
+# End of macro fillmem
+0162 cd a2 0a		        call    update_game_field 
+0165 cd fe 01		        call    tms_flush_buffer 
+0168			 
+0168			end_loop: 
+0168 cd a7 01		        call    tms_wait 
+016b c3 2d 01		        jp      gameloop 
+016e			 
+016e 00			frame:                  db 0 
+016f 00			ticks:                  db 0 
+0170 00			x_dir:                  db 0 
+0171 00			game_field_offset:      db 0 
+0172 00			game_x_offset:          db 0 
+0173			 
+0173			 
+0173			include 'tms.asm' 
+0173			include 'tms.inc' 
+0173			io_tmsdata:     equ 0xa0        ; NABU 
+0173			io_tmslatch:    equ 0xa1        ; NABU 
+0173			 
+0173			; io_tmsdata:     equ 0x80        ; Z80-Retro! 
+0173			; io_tmslatch:    equ 0x81        ; Z80-Retro! 
+0173			 
+0173			; pallets 
+0173			tms_transparent:        equ 0x00 
+0173			tms_black:              equ 0x01 
+0173			tms_medium_green:       equ 0x02 
+0173			tms_light_green:        equ 0x03 
+0173			tms_dark_blue:          equ 0x04 
+0173			tms_light_blue:         equ 0x05 
+0173			tms_dark_red:           equ 0x06 
+0173			tms_cyan:               equ 0x07 
+0173			tms_medium_red:         equ 0x08 
+0173			tms_light_red:          equ 0x09 
+0173			tms_dark_yellow:        equ 0x0a 
+0173			tms_light_yellow:       equ 0x0b 
+0173			tms_dark_green:         equ 0x0c 
+0173			tms_magenta:            equ 0x0d 
+0173			tms_gray:               equ 0x0e 
+0173			tms_white:              equ 0x0f 
+0173			 
+0173			tms_patternTable:               equ 0x0000 
+0173			tms_patternTableLen:            equ 0x800 
+0173			 
+0173			tms_colorTable:                 equ 0x2000 
+0173			tms_colorTableLen:              equ 0x800 
+0173			 
+0173			tms_nameTable:                  equ 0x3800 
+0173			tms_nameTableLen:               equ 0x300 
+0173			 
+0173			tms_spriteAttributeTable:       equ 0x3b00 
+0173			tms_spriteAttributeTableLen:    equ 0x100 
+0173			 
+0173			tms_spritePatternTable:         equ 0x1800 
+0173			tms_spritePatternTableLen:      equ 0x800 
+# End of file tms.inc
+0173			 
+0173			tms_init_g2: 
+0173 21 0e 02		        ld      hl,.tms_init_g2_registers 
+0176 06 10		        ld      b,.tms_init_g2_registers_length 
+0178 0e a1		        ld      c,io_tmslatch 
+017a ed b3		        otir 
+017c c9			        ret 
+017d			 
+017d			; functions 
+017d			 
+017d			; d = value 
+017d			; b = register 
+017d			tms_set_register: 
+017d 7a			        ld      a,d 
+017e d3 a1		        out     (io_tmslatch),a 
+0180 78			        ld      a,b 
+0181 f6 80		        or      0x80 
+0183 d3 a1		        out     (io_tmslatch),a 
+0185 c9			        ret 
+0186			 
+0186			; color in b 
+0186			tms_set_backdrop_color: 
+0186 50			        ld      d,b 
+0187 06 07		        ld      b,0x07 
+0189 cd 7d 01		        call    tms_set_register 
+018c c9			        ret 
+018d			 
+018d			; de = write address 
+018d			tms_set_write_address: 
+018d 7b			        ld      a,e 
+018e d3 a1		        out     (io_tmslatch),a 
+0190 7a			        ld      a,d 
+0191 f6 40		        or      0x40 
+0193 d3 a1		        out     (io_tmslatch),a 
+0195 c9			        ret 
+0196			 
+0196			; color in b 
+0196			tms_set_all_colors: 
+0196 11 00 20		        ld      de,tms_colorTable 
+0199 cd 8d 01		        call    tms_set_write_address 
+019c			 
+019c 68			        ld      l,b 
+019d 11 00 08		        ld      de,tms_colorTableLen 
+01a0 cd b8 01		        call    tms_set_vram_loop_start 
+01a3 c9			        ret 
+01a4			 
+01a4			; write a single byte to VRAM 
+01a4			tms_put: 
+01a4 d3 a0		        out (io_tmsdata),a 
+01a6 c9			        ret 
+01a7			 
+01a7			; wait for the interrupt bit to be set 
+01a7			; this works differently on different platforms. 
+01a7			; for now we just poll the tms register 
+01a7			tms_wait: 
+01a7 db a1		        in      a,(io_tmslatch) 
+01a9 07			        rlca 
+01aa 30 fb		        jr      nc,tms_wait 
+01ac c9			        ret 
+01ad			 
+01ad			; initilize all vram to 0x00 
+01ad			tms_clear_vram: 
+01ad 11 00 00		        ld      de,0x00 
+01b0 cd 8d 01		        call    tms_set_write_address 
+01b3			 
+01b3 11 ff 3f		        ld      de,0x3FFF 
+01b6 2e 00		        ld      l,0x00 
+01b8			        ; pass through 
+01b8			 
+01b8			; write whatever is in l to vdp for de count times. 
+01b8			; l = value to write 
+01b8			; de = number of times to write it. 
+01b8			tms_set_vram_loop_start: 
+01b8 43			        ld      b,e 
+01b9 1b			        dec     de 
+01ba 14			        inc     d 
+01bb 7d			        ld      a,l 
+01bc			tms_set_vram_loop: 
+01bc d3 a0		        out     (io_tmsdata),a 
+01be			        ; push    hl 
+01be			        ; pop     hl 
+01be			        ; push    hl 
+01be			        ; pop     hl 
+01be			        ; push    hl 
+01be			        ; pop     hl 
+01be 10 fc		        djnz    tms_set_vram_loop 
+01c0 15			        dec     d 
+01c1 c2 bc 01		        jp      nz,tms_set_vram_loop 
+01c4 c9			        ret 
+01c5			 
+01c5			; writes zeros to all names in name table. 
+01c5			tms_clear_screen: 
+01c5 11 00 38		        ld      de,tms_nameTable 
+01c8 cd 8d 01		        call    tms_set_write_address 
+01cb			 
+01cb 11 00 03		        ld      de,tms_nameTableLen 
+01ce 2e 00		        ld      l,0x00 
+01d0 cd b8 01		        call    tms_set_vram_loop_start 
+01d3 c9			        ret 
+01d4			 
+01d4			; DE = VDP target memory address 
+01d4			; HL = host memory address 
+01d4			; BC = number of bytes to write 
+01d4			; Clobbers: AF, BC, DE, HL 
+01d4			tms_write_slow: 
+01d4 cd 8d 01		        call    tms_set_write_address 
+01d7			 
+01d7 50			        ld      d,b 
+01d8 59			        ld      e,c 
+01d9 0e a0		        ld      c,io_tmsdata 
+01db			.tms_write_slow_loop: 
+01db ed a3		        outi 
+01dd e5			        push    hl 
+01de e1			        pop     hl 
+01df e5			        push    hl 
+01e0 e1			        pop     hl 
+01e1 1b			        dec     de 
+01e2 7a			        ld      a,d 
+01e3 b3			        or      e 
+01e4 20 f5		        jr      nz,.tms_write_slow_loop 
+01e6 c9			        ret 
+01e7			 
+01e7			; DE = VDP target memory address 
+01e7			; HL = host memory address 
+01e7			; BC = number of bytes to write 
+01e7			; Clobbers: AF, BC, DE, HL 
+01e7			tms_write_fast: 
+01e7 cd 8d 01		        call    tms_set_write_address 
+01ea 50			        ld      d,b 
+01eb 59			        ld      e,c 
+01ec 0e a0		        ld      c,io_tmsdata 
+01ee			; goldilocks 
+01ee 43			        ld      b,e 
+01ef 1c			        inc     e 
+01f0 1d			        dec     e 
+01f1 28 01		        jr      z,tms_write_fast_loop 
+01f3 14			        inc     d 
+01f4			tms_write_fast_loop: 
+01f4 ed a3		        outi 
+01f6 c2 f4 01		        jp      nz,tms_write_fast_loop 
+01f9 15			        dec     d 
+01fa c2 f4 01		        jp      nz,tms_write_fast_loop 
+01fd c9			        ret 
+01fe			 
+01fe			; flush the tms_buffer to the nameTable vram address space. 
+01fe			tms_flush_buffer: 
+01fe 11 00 38		        ld      de,tms_nameTable 
+0201 21 1e 02		        ld      hl,tms_buffer 
+0204 01 00 03		        ld      bc,0x300 
+0207 cd a7 01		        call    tms_wait 
+020a cd e7 01		        call    tms_write_fast 
+020d c9			        ret 
+020e			 
+020e			; Graphics Mode II registers 
+020e			.tms_init_g2_registers: 
+020e 02 80		        db      0x02, 0x80      ;Graphics mode 2, no external video 
+0210 e0 81		        db      0xe0, 0x81      ;16K,enable display, disable interrupts 
+0212 0e 82		        db      0x0e, 0x82      ;name table = 0x1800 
+0214 9f 83		        db      0x9f, 0x83      ;color table = 0x2000-0x2800 
+0216 00 84		        db      0x00, 0x84      ;pattern table = 0x0000-0x0800 
+0218 76 85		        db      0x76, 0x85      ;sprite attribute table 0x1b00 
+021a 03 86		        db      0x03, 0x86      ;sprite pattern table 0x1800 
+021c 01 87		        db      0x01, 0x87      ;backdrop color = black 
+021e			.tms_init_g2_registers_length: equ $-.tms_init_g2_registers 
+021e			 
+021e			; Frame buffer for graphics mode 2 
+021e 0x00...		tms_buffer:     ds 0x300, 0 
+# End of file tms.asm
+051e			include 'utils.asm' 
+051e			bdos:           equ 0x0005 
+051e			con_out:	equ 0x02 
+051e			con_status:     equ 0x0b 
+051e			 
+051e			check_cpm_key: 
+051e 0e 0b		        ld      c,con_status 
+0520 cd 05 00		        call    bdos 
+0523 b7			        or      a 
+0524 c2 2f 05		        jp      nz,cpm_terminate 
+0527 c9			        ret 
+0528			 
+0528			puts: 
+0528 5f				ld	e,a 
+0529 0e 02			ld	c,con_out 
+052b cd 05 00			call	bdos 
+052e c9			        ret 
+052f			 
+052f			cpm_terminate: 
+052f c3 00 00		        jp      0 
+0532			 
+0532			; Fills memory with a single value. 
+0532			; a = value to fill with 
+0532			; hl = start address 
+0532			; bc = count / size to fill. 
+0532			fillmem: 
+0532 77				ld 	(hl),a 
+0533 5d				ld 	e,l 
+0534 54				ld 	d,h 
+0535 13				inc 	de 
+0536 0b				dec 	bc 
+0537 ed b0			ldir 
+0539 c9				ret 
+053a			 
+053a			;############################################################################# 
+053a			; Print the value in A in hex 
+053a			; Clobbers C 
+053a			;############################################################################# 
+053a			hexdump_a: 
+053a f5				push	af 
+053b cb 3f			srl	a 
+053d cb 3f			srl	a 
+053f cb 3f			srl	a 
+0541 cb 3f			srl	a 
+0543 cd 4f 05			call	.hexdump_nib 
+0546 f1				pop	af 
+0547 f5				push	af 
+0548 e6 0f			and	0x0f 
+054a cd 4f 05			call	.hexdump_nib 
+054d f1				pop	af 
+054e c9				ret 
+054f			 
+054f			.hexdump_nib: 
+054f c6 30			add	'0' 
+0551 fe 3a			cp	'9'+1 
+0553 fa 58 05			jp	m,.hexdump_num 
+0556 c6 07			add	'A'-'9'-1 
+0558			.hexdump_num: 
+0558 c3 28 05			jp	puts
+# End of file utils.asm
+055b			include 'patterns.asm' 
+055b			; Troy's HBC-56 - 6502 - Invaders 
+055b			; 
+055b			; Copyright (c) 2021 Troy Schrapel 
+055b			; 
+055b			; This code is licensed under the MIT license 
+055b			; 
+055b			; https://github.com/visrealm/hbc-56 
+055b			; 
+055b			; Sprite / character patterns 
+055b			; 
+055b			 
+055b			playerSprite: 
+055b 00 00 00 00 00 00 08 08	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x08,0x08 
+0563 08 08 1c 7f ff ff ff 63	       db 0x08,0x08,0x1C,0x7F,0xFF,0xFF,0xFF,0x63 
+056b 00 00 00 00 00 00 00 00	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0573 00 00 00 00 80 80 80 00	       db 0x00,0x00,0x00,0x00,0x80,0x80,0x80,0x00 
+057b			 
+057b			bulletSprite: 
+057b 80 80 80 80 80 00 00 00	       db 0x80,0x80,0x80,0x80,0x80,0x00,0x00,0x00 
+0583 00 00 00 00 00 00 00 00	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+058b 00 00 00 00 00 00 00 00	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0593 00 00 00 00 00 00 00 00	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+059b			 
+059b			EMPTY: 
+059b 00 00 00 00 00 00 00 00	       db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+05a3			 
+05a3			invaderBomb: 
+05a3 00 00 00 00 00 00 00 00	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+05ab 00 00 40 80 40 80 40 80	db 0x00,0x00,0x40,0x80,0x40,0x80,0x40,0x80 
+05b3 00 00 00 00 00 00 00 00	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+05bb 00 00 00 00 00 00 00 00	db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+05c3			 
+05c3			INVADER_OFFSET_2:       equ IP12L - IP10L 
+05c3			INVADER_OFFSET_4:       equ IP14L - IP10L 
+05c3			INVADER_OFFSET_6:       equ IP16L - IP10L 
+05c3			INVADER_OFFSET_COLOR:   equ INVADER1_COLOR - IP10L 
+05c3			 
+05c3			INVADER1: 
+05c3 1e ff cc ff ff 12 21 c0	IP10L:  db 0x1E,0xFF,0xCC,0xFF,0xFF,0x12,0x21,0xC0      ;1 offset0 
+05cb 00 c0 c0 c0 c0 00 00 c0	IP10R:  db 0x00,0xC0,0xC0,0xC0,0xC0,0x00,0x00,0xC0      ;2 
+05d3 07 3f 33 3f 3f 04 08 0c	IP12L:  db 0x07,0x3F,0x33,0x3F,0x3F,0x04,0x08,0x0C      ;3 offset1 
+05db 80 f0 30 f0 f0 80 40 c0	IP12R:  db 0x80,0xF0,0x30,0xF0,0xF0,0x80,0x40,0xC0      ;4 
+05e3 01 0f 0c 0f 0f 01 02 0c	IP14L:  db 0x01,0x0F,0x0C,0x0F,0x0F,0x01,0x02,0x0C      ;5 offset2 
+05eb e0 fc cc fc fc 20 10 0c	IP14R:  db 0xE0,0xFC,0xCC,0xFC,0xFC,0x20,0x10,0x0C      ;6 
+05f3 00 03 03 03 03 00 00 00	IP16L:  db 0x00,0x03,0x03,0x03,0x03,0x00,0x00,0x00      ;7 offset3 
+05fb 78 ff 33 ff ff 48 84 cc	IP16R:  db 0x78,0xFF,0x33,0xFF,0xFF,0x48,0x84,0xCC      ;8 
+0603 00 00 00 00 1e ff cc ff	IP18LT: db 0x00,0x00,0x00,0x00,0x1E,0xFF,0xCC,0xFF 
+060b 00 00 00 00 00 c0 c0 c0	IP18RT: db 0x00,0x00,0x00,0x00,0x00,0xC0,0xC0,0xC0 
+0613 ff 12 21 33 00 00 00 00	IP18LB: db 0xFF,0x12,0x21,0x33,0x00,0x00,0x00,0x00 
+061b c0 00 00 00 00 00 00 00	IP18RB: db 0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0623 60			INVADER1_COLOR: db 0x60 
+0624			 
+0624			INVADER2: 
+0624 63 22 3e 6b ff be a2 36	IP20L:  db 0x63,0x22,0x3E,0x6B,0xFF,0xBE,0xA2,0x36      ;9 
+062c 00 00 00 00 80 80 80 00	IP20R:  db 0x00,0x00,0x00,0x00,0x80,0x80,0x80,0x00      ;10 
+0634 18 08 2f 2a 3f 0f 08 30	IP22L:  db 0x18,0x08,0x2F,0x2A,0x3F,0x0F,0x08,0x30      ;11 
+063c c0 80 a0 a0 e0 80 80 60	IP22R:  db 0xC0,0x80,0xA0,0xA0,0xE0,0x80,0x80,0x60      ;12 
+0644 06 02 03 06 0f 0b 0a 03	IP24L:  db 0x06,0x02,0x03,0x06,0x0F,0x0B,0x0A,0x03      ;13 
+064c 30 20 e0 b0 f8 e8 28 60	IP24R:  db 0x30,0x20,0xE0,0xB0,0xF8,0xE8,0x28,0x60      ;14 
+0654 01 00 02 02 03 00 00 03	IP26L:  db 0x01,0x00,0x02,0x02,0x03,0x00,0x00,0x03      ;15 
+065c 8c 88 fa aa fe f8 88 06	IP26R:  db 0x8C,0x88,0xFA,0xAA,0xFE,0xF8,0x88,0x06      ;16 
+0664 00 00 00 00 63 22 be aa	IP28LT: db 0x00,0x00,0x00,0x00,0x63,0x22,0xBE,0xAA 
+066c 00 00 00 00 00 00 80 80	IP28RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x80,0x80 
+0674 ff 3e 22 c1 00 00 00 00	IP28LB: db 0xFF,0x3E,0x22,0xC1,0x00,0x00,0x00,0x00 
+067c 80 00 00 80 00 00 00 00	IP28RB: db 0x80,0x00,0x00,0x80,0x00,0x00,0x00,0x00 
+0684 50			INVADER2_COLOR: db 0x50 
+0685			 
+0685			INVADER3: 
+0685 08 1c 3e 6b 7f 14 22 41	IP30L:  db 0x08,0x1C,0x3E,0x6B,0x7F,0x14,0x22,0x41      ;17 
+068d 00 00 00 00 00 00 00 00	IP30R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00      ;18 
+0695 02 07 0f 1a 1f 05 08 05	IP32L:  db 0x02,0x07,0x0F,0x1A,0x1F,0x05,0x08,0x05      ;19 
+069d 00 00 80 c0 c0 00 80 00	IP32R:  db 0x00,0x00,0x80,0xC0,0xC0,0x00,0x80,0x00      ;20 
+06a5 00 01 03 06 07 01 02 04	IP34L:  db 0x00,0x01,0x03,0x06,0x07,0x01,0x02,0x04      ;21 
+06ad 80 c0 e0 b0 f0 40 20 10	IP34R:  db 0x80,0xC0,0xE0,0xB0,0xF0,0x40,0x20,0x10      ;22 
+06b5 00 00 00 01 01 00 00 00	IP36L:  db 0x00,0x00,0x00,0x01,0x01,0x00,0x00,0x00      ;23 
+06bd 20 70 f8 ac fc 50 88 50	IP36R:  db 0x20,0x70,0xF8,0xAC,0xFC,0x50,0x88,0x50      ;24 
+06c5 00 00 00 00 08 1c 3e 6b	IP38LT: db 0x00,0x00,0x00,0x00,0x08,0x1C,0x3E,0x6B 
+06cd 00 00 00 00 00 00 00 00	IP38RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+06d5 7f 14 22 14 00 00 00 00	IP38LB: db 0x7F,0x14,0x22,0x14,0x00,0x00,0x00,0x00 
+06dd 00 00 00 00 00 00 00 00	IP38RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+06e5 30			INVADER3_COLOR: db 0x30 
+06e6			 
+06e6			SNAKE: 
+06e6			INVADER4: 
+06e6 3e 2a 3e 08 08 08 1c 1c	IP40L:  db 0x3E,0x2A,0x3E,0x08,0x08,0x08,0x1C,0x1C 
+06ee 00 00 00 00 00 00 00 00	IP40R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+06f6 0f 0a 0f 02 04 08 1c 1c	IP42L:  db 0x0F,0x0A,0x0F,0x02,0x04,0x08,0x1C,0x1C 
+06fe 80 80 80 00 00 00 00 00	IP42R:  db 0x80,0x80,0x80,0x00,0x00,0x00,0x00,0x00 
+0706 0f 0a 0f 02 01 00 01 01	IP44L:  db 0x0F,0x0A,0x0F,0x02,0x01,0x00,0x01,0x01 
+070e 80 80 80 00 00 80 c0 c0	IP44R:  db 0x80,0x80,0x80,0x00,0x00,0x80,0xC0,0xC0 
+0716 00 00 00 00 00 00 01 01	IP46L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x01 
+071e f8 a8 f8 20 40 80 c0 c0	IP46R:  db 0xF8,0xA8,0xF8,0x20,0x40,0x80,0xC0,0xC0 
+0726 00 00 00 00 00 3e 2a 3e	IP48LT: db 0x00,0x00,0x00,0x00,0x00,0x3E,0x2A,0x3E 
+072e 00 00 00 00 00 00 00 00	IP48RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0736 1c 1c 00 00 00 00 00 00	IP48LB: db 0x1C,0x1C,0x00,0x00,0x00,0x00,0x00,0x00 
+073e 00 00 00 00 00 00 00 00	IP48RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0746 a0			INVADER4_COLOR: db 0xA0 
+0747			 
+0747			TURNOVER: 
+0747			INVADER5: 
+0747 00 00 00 1c 3e 36 63 63	IP50L:  db 0x00,0x00,0x00,0x1C,0x3E,0x36,0x63,0x63 
+074f 00 00 00 00 00 00 00 00	IP50R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0757 00 0c 0e 07 03 01 01 01	IP52L:  db 0x00,0x0C,0x0E,0x07,0x03,0x01,0x01,0x01 
+075f 00 00 00 00 80 80 80 80	IP52R:  db 0x00,0x00,0x00,0x00,0x80,0x80,0x80,0x80 
+0767 01 01 01 01 01 01 01 01	IP54L:  db 0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01 
+076f 80 80 80 80 80 80 80 80	IP54R:  db 0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80 
+0777 00 00 00 00 00 00 00 00	IP56L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+077f 00 18 38 70 e0 c0 c0 c0	IP56R:  db 0x00,0x18,0x38,0x70,0xE0,0xC0,0xC0,0xC0 
+0787 00 00 00 00 00 00 00 00	IP58LT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+078f 00 00 00 00 00 00 00 00	IP58RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0797 00 00 ff ff 00 00 00 00	IP58LB: db 0x00,0x00,0xFF,0xFF,0x00,0x00,0x00,0x00 
+079f 00 00 00 00 00 00 00 00	IP58RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+07a7 70			INVADER5_COLOR: db 0x70 
+07a8			 
+07a8			FLASHER_EYES: 
+07a8			INVADER6: 
+07a8 3f 3f 0c 7f 7f 52 92 a1	IP60L:  db 0x3F,0x3F,0x0C,0x7F,0x7F,0x52,0x92,0xA1 
+07b0 00 00 00 80 80 80 40 40	IP60R:  db 0x00,0x00,0x00,0x80,0x80,0x80,0x40,0x40 
+07b8 0f 0f 03 1f 1f 14 14 0b	IP62L:  db 0x0F,0x0F,0x03,0x1F,0x1F,0x14,0x14,0x0B 
+07c0 c0 c0 00 e0 e0 a0 a0 40	IP62R:  db 0xC0,0xC0,0x00,0xE0,0xE0,0xA0,0xA0,0x40 
+07c8 00 04 00 00 00 00 00 00	IP64L:  db 0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00 
+07d0 00 80 00 00 00 00 00 00	IP64R:  db 0x00,0x80,0x00,0x00,0x00,0x00,0x00,0x00 
+07d8 00 00 00 00 00 00 00 00	IP66L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+07e0 00 12 00 00 00 00 00 00	IP66R:  db 0x00,0x12,0x00,0x00,0x00,0x00,0x00,0x00 
+07e8 00 00 00 00 3f 3f 0c 7f	IP68LT: db 0x00,0x00,0x00,0x00,0x3F,0x3F,0x0C,0x7F 
+07f0 00 00 00 00 00 00 00 80	IP68RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x80 
+07f8 7f 92 52 2d 00 00 00 00	IP68LB: db 0x7F,0x92,0x52,0x2D,0x00,0x00,0x00,0x00 
+0800 80 40 80 00 00 00 00 00	IP68RB: db 0x80,0x40,0x80,0x00,0x00,0x00,0x00,0x00 
+0808 c0			INVADER6_COLOR: db 0xC0 
+0809			 
+0809			PULSAR: 
+0809			INVADER7: 
+0809 3c 7e ff db ff ff 7e 3c	IP70L:  db 0x3C,0x7E,0xFF,0xDB,0xFF,0xFF,0x7E,0x3C 
+0811 00 00 00 00 00 00 00 00	IP70R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0819 00 0f 1f 16 1f 1f 0f 00	IP72L:  db 0x00,0x0F,0x1F,0x16,0x1F,0x1F,0x0F,0x00 
+0821 00 00 80 80 80 80 00 00	IP72R:  db 0x00,0x00,0x80,0x80,0x80,0x80,0x00,0x00 
+0829 00 00 01 02 03 01 00 00	IP74L:  db 0x00,0x00,0x01,0x02,0x03,0x01,0x00,0x00 
+0831 00 00 80 40 c0 80 00 00	IP74R:  db 0x00,0x00,0x80,0x40,0xC0,0x80,0x00,0x00 
+0839 00 00 01 01 01 01 00 00	IP76L:  db 0x00,0x00,0x01,0x01,0x01,0x01,0x00,0x00 
+0841 00 f0 f8 68 f8 f8 f0 00	IP76R:  db 0x00,0xF0,0xF8,0x68,0xF8,0xF8,0xF0,0x00 
+0849 00 00 00 00 00 3c 7e 5a	IP78LT: db 0x00,0x00,0x00,0x00,0x00,0x3C,0x7E,0x5A 
+0851 00 00 00 00 00 00 00 00	IP78RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0859 7e 7e 3c 00 00 00 00 00	IP78LB: db 0x7E,0x7E,0x3C,0x00,0x00,0x00,0x00,0x00 
+0861 00 00 00 00 00 00 00 00	IP78RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0869 d0			INVADER97COLOR: db 0xD0 
+086a			 
+086a			BAT: 
+086a			INVADER8: 
+086a 00 18 3c 5a 42 42 24 00	IP80L:  db 0x00,0x18,0x3C,0x5A,0x42,0x42,0x24,0x00 
+0872 00 00 00 00 00 00 00 00	IP80R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+087a 00 00 36 4f 46 00 00 00	IP82L:  db 0x00,0x00,0x36,0x4F,0x46,0x00,0x00,0x00 
+0882 00 00 c0 20 20 00 00 00	IP82R:  db 0x00,0x00,0xC0,0x20,0x20,0x00,0x00,0x00 
+088a 00 00 00 1d 23 01 00 00	IP84L:  db 0x00,0x00,0x00,0x1D,0x23,0x01,0x00,0x00 
+0892 00 00 00 b8 c4 80 00 00	IP84R:  db 0x00,0x00,0x00,0xB8,0xC4,0x80,0x00,0x00 
+089a 00 00 03 04 04 00 00 00	IP86L:  db 0x00,0x00,0x03,0x04,0x04,0x00,0x00,0x00 
+08a2 00 00 6c f2 62 00 00 00	IP86R:  db 0x00,0x00,0x6C,0xF2,0x62,0x00,0x00,0x00 
+08aa 00 00 00 00 00 5a bd 99	IP88LT: db 0x00,0x00,0x00,0x00,0x00,0x5A,0xBD,0x99 
+08b2 00 00 00 00 00 00 00 00	IP88RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+08ba 42 00 00 00 00 00 00 00	IP88LB: db 0x42,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+08c2 00 00 00 00 00 00 00 00	IP88RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+08ca 20			INVADER8_COLOR: db 0x20 
+08cb			 
+08cb			FLASHER: 
+08cb			INVADER9: 
+08cb 3f 3f 0c 7f 7f 52 92 a1	IP90L:  db 0x3F,0x3F,0x0C,0x7F,0x7F,0x52,0x92,0xA1 
+08d3 00 00 00 80 80 80 40 40	IP90R:  db 0x00,0x00,0x00,0x80,0x80,0x80,0x40,0x40 
+08db 0f 0f 03 1f 1f 14 14 0b	IP92L:  db 0x0F,0x0F,0x03,0x1F,0x1F,0x14,0x14,0x0B 
+08e3 c0 c0 00 e0 e0 a0 a0 40	IP92R:  db 0xC0,0xC0,0x00,0xE0,0xE0,0xA0,0xA0,0x40 
+08eb 00 00 00 00 00 00 00 00	IP94L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+08f3 00 00 00 00 00 00 00 00	IP94R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+08fb 00 00 00 00 00 00 00 00	IP96L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0903 00 00 00 00 00 00 00 00	IP96R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+090b 00 00 00 00 00 00 00 00	IP98LT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0913 00 00 00 00 00 00 00 00	IP98RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+091b 00 00 00 00 00 00 00 00	IP98LB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0923 00 00 00 00 00 00 00 00	IP98RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+092b 40			INVADER9_COLOR: db 0x40 
+092c			 
+092c			FLASHER2: 
+092c			INVADERA: 
+092c 00 00 00 00 00 00 00 00	IPA0L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0934 00 00 00 00 00 00 00 00	IPA0R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+093c 00 00 00 00 00 00 00 00	IPA2L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+0944 00 00 00 00 00 00 00 00	IPA2R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+094c 03 03 00 07 07 05 09 0a	IPA4L:  db 0x03,0x03,0x00,0x07,0x07,0x05,0x09,0x0A 
+0954 f0 f0 c0 f8 f8 28 24 14	IPA4R:  db 0xF0,0xF0,0xC0,0xF8,0xF8,0x28,0x24,0x14 
+095c 00 00 00 01 01 01 01 00	IPA6L:  db 0x00,0x00,0x00,0x01,0x01,0x01,0x01,0x00 
+0964 fc fc 30 fe fe 4a 4a b4	IPA6R:  db 0xFC,0xFC,0x30,0xFE,0xFE,0x4A,0x4A,0xB4 
+096c 00 00 00 00 3f 3f 0c 7f	IPA8LT: db 0x00,0x00,0x00,0x00,0x3F,0x3F,0x0C,0x7F 
+0974 00 00 00 00 00 00 00 80	IPA8RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x80 
+097c 7f 92 52 2d 00 00 00 00	IPA8LB: db 0x7F,0x92,0x52,0x2D,0x00,0x00,0x00,0x00 
+0984 80 40 80 00 00 00 00 00	IPA8RB: db 0x80,0x40,0x80,0x00,0x00,0x00,0x00,0x00 
+098c 60			INVADERA_COLOR: db 0x60 
+098d			 
+098d			EYES: 
+098d			INVADERB: 
+098d 00 12 00 00 00 00 00 00	IPB0L:  db 0x00,0x12,0x00,0x00,0x00,0x00,0x00,0x00 
+0995 00 00 00 00 00 00 00 00	IPB0R:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+099d 00 04 00 00 00 00 00 00	IPB2L:  db 0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00 
+09a5 00 80 00 00 00 00 00 00	IPB2R:  db 0x00,0x80,0x00,0x00,0x00,0x00,0x00,0x00 
+09ad 00 01 00 00 00 00 00 00	IPB4L:  db 0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00 
+09b5 00 20 00 00 00 00 00 00	IPB4R:  db 0x00,0x20,0x00,0x00,0x00,0x00,0x00,0x00 
+09bd 00 00 00 00 00 00 00 00	IPB6L:  db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+09c5 00 48 00 00 00 00 00 00	IPB6R:  db 0x00,0x48,0x00,0x00,0x00,0x00,0x00,0x00 
+09cd 00 00 00 00 00 12 00 00	IPB8LT: db 0x00,0x00,0x00,0x00,0x00,0x12,0x00,0x00 
+09d5 00 00 00 00 00 00 00 00	IPB8RT: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+09dd 00 00 00 00 00 00 00 00	IPB8LB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+09e5 00 00 00 00 00 00 00 00	IPB8RB: db 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 
+09ed 90			INVADERB_COLOR: db 0x90 
+09ee			 
+09ee			explodeSprite: 
+09ee 05 00 22 00 10 a5 02 45	db 0x05,0x00,0x22,0x00,0x10,0xA5,0x02,0x45 
+09f6 20 52 08 a0 15 60 00 00	db 0x20,0x52,0x08,0xA0,0x15,0x60,0x00,0x00 
+09fe 00 00 20 00 40 28 00 80	db 0x00,0x00,0x20,0x00,0x40,0x28,0x00,0x80 
+0a06 20 50 80 28 40 30 00 00	db 0x20,0x50,0x80,0x28,0x40,0x30,0x00,0x00 
+0a0e			 
+0a0e			 
+0a0e 00 00 1f 3f 7f 78 70 70	BBORDR:db 0x00,0x00,0x1F,0x3F,0x7F,0x78,0x70,0x70 
+0a16 00 00 ff ff ff 00 00 00	       db 0x00,0x00,0xFF,0xFF,0xFF,0x00,0x00,0x00 
+0a1e 00 00 fc fe ff 0f 07 07	       db 0x00,0x00,0xFC,0xFE,0xFF,0x0F,0x07,0x07 
+0a26 70 70 70 70 70 70 70 70	       db 0x70,0x70,0x70,0x70,0x70,0x70,0x70,0x70 
+0a2e 07 07 07 07 07 07 07 07	       db 0x07,0x07,0x07,0x07,0x07,0x07,0x07,0x07 
+0a36 70 70 70 70 78 7f 3f 1f	       db 0x70,0x70,0x70,0x70,0x78,0x7F,0x3F,0x1F 
+0a3e 00 00 00 00 00 ff ff ff	       db 0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0xFF 
+0a46 07 07 07 07 0f ff fe fc	       db 0x07,0x07,0x07,0x07,0x0F,0xFF,0xFE,0xFC 
+0a4e			 
+0a4e 00 03 07 0f 1f 3f 3f 3f	SHIELD:db 0x00,0x03,0x07,0x0F,0x1F,0x3F,0x3F,0x3F 
+0a56 00 ff ff ff ff ff ff ff	       db 0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF 
+0a5e 00 c0 e0 f0 f8 fc fc fc	       db 0x00,0xC0,0xE0,0xF0,0xF8,0xFC,0xFC,0xFC 
+0a66 3f 3f 3f 3f 3f 3f 3f 3f	       db 0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F,0x3F 
+0a6e ff ff ff ff c3 81 81 81	       db 0xFF,0xFF,0xFF,0xFF,0xC3,0x81,0x81,0x81 
+0a76 fc fc fc fc fc fc fc fc	       db 0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC,0xFC
+# End of file patterns.asm
+0a7e			include 'aliens.asm' 
+0a7e			; everything to do with plotting aliens into the frame buffer 
+0a7e			; 
+0a7e			 
+0a7e			game_field_buffer_start:        equ tms_buffer + 0x40 
+0a7e			game_field_buffer_size:         equ 0x140 
+0a7e			 
+0a7e			; create invader pattern table 
+0a7e			create_invader_pattern_table: 
+0a7e 11 08 00		        ld      de,8 
+0a81 21 c3 05		        ld      hl,INVADER1 
+0a84 01 40 00		        ld      bc,64 
+0a87 cd e7 01		        call    tms_write_fast 
+0a8a 11 48 00		        ld      de,8+64 
+0a8d 21 24 06		        ld      hl,INVADER2 
+0a90 01 40 00		        ld      bc,64 
+0a93 cd e7 01		        call    tms_write_fast 
+0a96 11 88 00		        ld      de,8+64+64 
+0a99 21 85 06		        ld      hl,INVADER3 
+0a9c 01 40 00		        ld      bc,64 
+0a9f cd e7 01		        call    tms_write_fast 
+0aa2			 
+0aa2			; use the gamefield data to position the aliens on the frame buffer. 
+0aa2			; game_field_offset % 4 + value of gamefield. 
+0aa2			update_game_field: 
+0aa2 11 5e 02		        ld      de,game_field_buffer_start 
+0aa5 3a 72 01		        ld      a,(game_x_offset) 
+0aa8 cb 2f		        sra     a 
+0aaa cb 2f		        sra     a       ; div 4 
+0aac 32 71 01		        ld      (game_field_offset),a 
+0aaf			        adddea 
+0aaf 83			        add     a, e    ; A = A+E 
+0ab0 5f			        ld      e, a    ; L = A+E 
+0ab1 8a			        adc     a, d    ; A = A+E+D+carry 
+0ab2 93			        sub     e       ; A = D+carry 
+0ab3 57			        ld      d, a    ; D = D+carry 
+0ab4			endm 
+# End of macro adddea
+0ab4 21 f7 0a		        ld      hl,game_field 
+0ab7 01 a0 00		        ld      bc,game_field_size 
+0aba			update_game_field_1: 
+0aba			        ; we need to check if gamefield at (hl) is a 0 
+0aba 7e			        ld      a,(hl) 
+0abb b7			        or      a 
+0abc ca ea 0a		        jp      z,.draw_blank 
+0abf			 
+0abf			        ; get the value at (hl) 
+0abf 3a 72 01		        ld      a,(game_x_offset) 
+0ac2 e6 03		        and     0x03            ; mod 4 
+0ac4 ca e0 0a		        jp      z,.offset0 
+0ac7 fe 01		        cp      1 
+0ac9 ca db 0a		        jp      z,.offset1 
+0acc fe 02		        cp      2 
+0ace ca d6 0a		        jp      z,.offset2 
+0ad1			        ; offset 3 
+0ad1 3e 06		        ld      a,6 
+0ad3 c3 e1 0a		        jp      .continue 
+0ad6			.offset2: 
+0ad6 3e 04		        ld      a,4 
+0ad8 c3 e1 0a		        jp      .continue 
+0adb			.offset1: 
+0adb 3e 02		        ld      a,2 
+0add c3 e1 0a		        jp      .continue 
+0ae0			.offset0: 
+0ae0 af			        xor     a 
+0ae1			.continue: 
+0ae1 86			        add     a,(hl) 
+0ae2			        ; draw the tile 
+0ae2 12			        ld      (de),a          ;left side of alien 
+0ae3 13			        inc     de              ;increment buffer pointer 
+0ae4 3c			        inc     a               ; on both sides of the alien. 
+0ae5 12			        ld      (de),a          ;right side of alien 
+0ae6 13			        inc     de              ; bring de to beginning of next row 
+0ae7 c3 ef 0a		        jp      .decrement_logic 
+0aea			.draw_blank: 
+0aea af			        xor     a 
+0aeb 12			        ld      (de),a 
+0aec 13			        inc     de 
+0aed 12			        ld      (de),a 
+0aee 13			        inc     de 
+0aef			        ;fall through 
+0aef			.decrement_logic: 
+0aef 23			        inc     hl 
+0af0 0b			        dec     bc 
+0af1 78			        ld      a,b 
+0af2 b1			        or      c 
+0af3 c2 ba 0a		        jp      nz,update_game_field_1 
+0af6 c9			        ret 
+0af7			 
+0af7			; initial game field - lays out the initial alien pattern on the left of the 
+0af7			; screen. 
+0af7			game_field:    ;0    2   4   6   8  10  12  14  16  18  20  22 24 28 30 32 
+0af7 11 11 11 11 11 11 11 11 11 11 11 00 00 00 00 00	        db      17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,  0, 0, 0, 0, 0  ; 0 
+0b07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00	        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 1 
+0b17 09 09 09 09 09 09 09 09 09 09 09 00 00 00 00 00	        db       9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 2 
+0b27 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00	        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 3 
+0b37 09 09 09 09 09 09 09 09 09 09 09 00 00 00 00 00	        db       9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 4 
+0b47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00	        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 5 
+0b57 01 01 01 01 01 01 01 01 01 01 01 00 00 00 00 00	        db       1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0, 0, 0, 0  ; 6 
+0b67 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00	        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 7 
+0b77 01 01 01 01 01 01 01 01 01 01 01 00 00 00 00 00	        db       1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0, 0, 0, 0  ; 8 
+0b87 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00	        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 9 
+0b97			game_field_size: equ $-game_field 
+# End of file aliens.asm
+# End of file invaders.asm
+0b97
