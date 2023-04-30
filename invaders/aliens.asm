@@ -4,6 +4,11 @@
 game_field_buffer_start:        equ tms_buffer + 0x40
 game_field_buffer_size:         equ 0x260
 
+; set up gamefield from defaults
+create_game_field:
+        memcpy init_game_field game_field init_game_field_size
+        ret
+
 ; set up invader colors
 create_invader_color_table:
         ld      de,tms_colorTable + 8
@@ -89,7 +94,7 @@ update_game_field_1:
 
 ; initial game field - lays out the initial alien pattern on the left of the
 ; screen.
-game_field:    ;0    2   4   6   8  10  12  14  16  18  20  22 24 28 30 32
+init_game_field:    ;0    2   4   6   8  10  12  14  16  18  20  22 24 28 30 32
         db      17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,  0, 0, 0, 0, 0  ; 0
         db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 1
         db       9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 2
@@ -100,4 +105,7 @@ game_field:    ;0    2   4   6   8  10  12  14  16  18  20  22 24 28 30 32
         db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 7
         db       1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0, 0, 0, 0  ; 8
         db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 9
-game_field_size: equ $-game_field
+init_game_field_size:   equ $-init_game_field
+
+game_field:             ds init_game_field_size, 0
+game_field_size:        equ init_game_field_size
