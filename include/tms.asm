@@ -78,12 +78,12 @@ tms_set_vram_loop_start:
         ld      a,l
 tms_set_vram_loop:
         out     (io_tmsdata),a
-        ; push    hl
-        ; pop     hl
-        ; push    hl
-        ; pop     hl
-        ; push    hl
-        ; pop     hl
+        push    hl
+        pop     hl
+        push    hl
+        pop     hl
+        push    hl
+        pop     hl
         djnz    tms_set_vram_loop
         dec     d
         jp      nz,tms_set_vram_loop
@@ -161,7 +161,7 @@ tms_flush_buffer:
         db      0x00, 0x84      ;pattern table = 0x0000-0x0800
         db      0x76, 0x85      ;sprite attribute table 0x1b00
         db      0x03, 0x86      ;sprite pattern table 0x1800
-        db      0x01, 0x87      ;backdrop color = black
+        db      0x0b, 0x87      ;backdrop color = black
 .tms_init_g2_registers_length: equ $-.tms_init_g2_registers
 
 ; Frame buffer for graphics mode 2

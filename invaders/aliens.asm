@@ -2,7 +2,22 @@
 ;
 
 game_field_buffer_start:        equ tms_buffer + 0x40
-game_field_buffer_size:         equ 0x140
+game_field_buffer_size:         equ 0x260
+
+; set up invader colors
+create_invader_color_table:
+        ld      de,tms_colorTable + 8
+        call    tms_set_write_address
+        ld      de, 64
+        ld      hl,(INVADER1_COLOR)
+        call    tms_set_vram_loop_start
+        ld      de, 64
+        ld      hl,(INVADER2_COLOR)
+        call    tms_set_vram_loop_start
+        ld      de, 64
+        ld      hl,(INVADER3_COLOR)
+        call    tms_set_vram_loop_start
+        ret
 
 ; create invader pattern table
 create_invader_pattern_table:
@@ -23,11 +38,18 @@ create_invader_pattern_table:
 ; game_field_offset % 4 + value of gamefield.
 update_game_field:
         ld      de,game_field_buffer_start
+        ld      a,(game_y_offset)
+        ld      l,a
+        ld      h,0
+        mul32
+        add     hl,de
+        ex      de,hl
         ld      a,(game_x_offset)
         sra     a
         sra     a       ; div 4
         ld      (game_field_offset),a
         adddea
+
         ld      hl,game_field
         ld      bc,game_field_size
 update_game_field_1:
@@ -39,22 +61,8 @@ update_game_field_1:
         ; get the value at (hl)
         ld      a,(game_x_offset)
         and     0x03            ; mod 4
-        jp      z,.offset0
-        cp      1
-        jp      z,.offset1
-        cp      2
-        jp      z,.offset2
-        ; offset 3
-        ld      a,6
-        jp      .continue
-.offset2:
-        ld      a,4
-        jp      .continue
-.offset1:
-        ld      a,2
-        jp      .continue
-.offset0:
-        xor     a
+        sla     a               ; x 2
+
 .continue:
         add     a,(hl)
         ; draw the tile

@@ -1,4 +1,5 @@
 **/*.lis
+**/*.sym
 **/*.map
 **/*.local
 **/*.COM
