@@ -17,7 +17,11 @@
         call    create_game_field
         call    create_invader_pattern_table
         call    create_invader_color_table
-        
+
+; set up shield patterns
+        call    create_shield_pattern_table
+
+reset:
 ; init gamefield (aliens)
         ld      a,8
         ld      (game_x_offset),a
@@ -25,15 +29,20 @@
         ld      (game_y_offset),a
         ld      a,1
         ld      (x_dir),a
+        ld      a,13
+        ld      (max_rows),a
+        ld      a,9
+        ld      (game_rows),a
+
 ; copy initial gamefield data over to variable gamefield data for game play.
 ; this will allow us to later on alter the values in the gamefield array.
-        ; memcpy  initial_game_field game_field initial_game_field_size
 
         fillmem tms_buffer 0x00 0x300           ; init framebuffer
         call    update_game_field               ; draw aliens in initial positions.
         call    tms_wait                        ; wait for vsync status register on vdp
         call    tms_flush_buffer                ; write framebuffer to the vdp.
 
+        call    draw_shield_layout              ; add the shields to the buffer.
 ; game loop
 .gameloop:
         call    check_cpm_key                   ; check for user input. Terminates at the moment.
@@ -60,7 +69,8 @@
         ld      a,(game_y_offset)               ; increment the y offiset (down one row)
         inc     a
         ld      (game_y_offset),a
-        cp      11                              ; check for bottom boundary
+        ld      hl,max_rows
+        cp      (hl)                            ; check for bottom boundary
         jp      p,.reset_game                   ; if bottom boundary then reset game.
         jp      .flush
 .move_left:
@@ -74,39 +84,35 @@
         ld      a,(game_y_offset)               ; increment y offset (down one row)
         inc     a
         ld      (game_y_offset),a
-        cp      11                              ; if bottom boundary hit, reset game.
+        ld      hl,max_rows
+        cp      (hl)                            ; if bottom boundary hit, reset game.
         jp      p,.reset_game
         ; fall through
 .flush:
         xor     a
         ld      (ticks),a                       ; reset tick count to 0.
-        ; call    hexdump_a
-        fillmem game_field_buffer_start 0x00 game_field_buffer_size ; clear game field in the buffer.
         call    update_game_field               ; draw the current game field on to the buffer.
 .end_loop:
         call    tms_wait                        ; wait for vsync
         call    tms_flush_buffer                ; fast flush the buffer to to the vdp.
         jp      .gameloop
 
+
 ; Move all the aliens back to their starting posistions.
 .reset_game:
-        call    create_game_field
-        ld      a,2                             ; set first row to 2 down from top.
-        ld      (game_y_offset),a
-        ld      a,8
-        ld      (game_x_offset),a
-        ld      a,1
-        ld      (x_dir),a
-        jp      .gameloop                       ; enter game.
+        jp      reset
 
 ; initialize variables
 ticks:                  db 0
-x_dir:                  db 0
+x_dir:                  db 1
 game_field_offset:      db 0
-game_x_offset:          db 0
-game_y_offset:          db 0
+game_x_offset:          db 8
+game_y_offset:          db 2
+game_rows:              db 9
+max_rows:               db 13
 
 include 'tms.asm'
 include 'utils.asm'
 include 'patterns.asm'
 include 'aliens.asm'
+include 'shield.asm'

@@ -1,4 +1,4 @@
-include 'tms.inc'
+include 'tms_constants.asm'
 
 tms_init_g2:
         ld      hl,.tms_init_g2_registers
