@@ -6,4 +6,5 @@
 **/*.com
 **/*.nabu
 **/*.NABU
+**/c.dsk
 .vscode

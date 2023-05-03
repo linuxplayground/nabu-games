@@ -20,6 +20,10 @@
 
 ; set up shield patterns
         call    create_shield_pattern_table
+        
+; set up player
+        call    create_player_sprite
+        call    set_player_attributes
 
 reset:
 ; init gamefield (aliens)
@@ -29,7 +33,7 @@ reset:
         ld      (game_y_offset),a
         ld      a,1
         ld      (x_dir),a
-        ld      a,13
+        ld      a,11
         ld      (max_rows),a
         ld      a,9
         ld      (game_rows),a
@@ -45,7 +49,26 @@ reset:
         call    draw_shield_layout              ; add the shields to the buffer.
 ; game loop
 .gameloop:
-        call    check_cpm_key                   ; check for user input. Terminates at the moment.
+        call    getjoy
+        cp      joy_map_left
+        jr      z,.player_left
+        cp      joy_map_right
+        jr      z,.player_right
+        cp      joy_map_button
+        jr      z,.player_shoot
+        call    getk
+        cp      0x1b                            ; escape to quit
+        jp      z,cpm_terminate
+        jr      .no_key_press
+.player_left:
+        call    move_player_left
+        jr      .no_key_press
+.player_right:
+        call    move_player_right
+        jr      .no_key_press
+.player_shoot:
+
+.no_key_press:
         ld      a, (ticks)                      ; increment ticks.  We animate every 8th vsync
         inc     a
         cp      8
@@ -109,10 +132,11 @@ game_field_offset:      db 0
 game_x_offset:          db 8
 game_y_offset:          db 2
 game_rows:              db 9
-max_rows:               db 13
+max_rows:               db 11
 
-include 'tms.asm'
 include 'utils.asm'
+include 'tms.asm'
 include 'patterns.asm'
 include 'aliens.asm'
 include 'shield.asm'
+include 'player.asm'

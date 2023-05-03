@@ -1,5 +1,12 @@
 include 'tms_constants.asm'
 
+; macros
+tmsput: macro value
+        ld      a,value
+        out     (io_tmsdata),a
+endm
+
+
 tms_init_g2:
         ld      hl,.tms_init_g2_registers
         ld      b,.tms_init_g2_registers_length
@@ -43,11 +50,6 @@ tms_set_all_colors:
         ld      l,b
         ld      de,tms_colorTableLen
         call    tms_set_vram_loop_start
-        ret
-
-; write a single byte to VRAM
-tms_put:
-        out (io_tmsdata),a
         ret
 
 ; wait for the interrupt bit to be set
@@ -155,7 +157,7 @@ tms_flush_buffer:
 ; Graphics Mode II registers
 .tms_init_g2_registers:
         db      0x02, 0x80      ;Graphics mode 2, no external video
-        db      0xe0, 0x81      ;16K,enable display, disable interrupts
+        db      0xe2, 0x81      ;16K,enable display, disable interrupts, 16x16 sprites
         db      0x0e, 0x82      ;name table = 0x1800
         db      0x9f, 0x83      ;color table = 0x2000-0x2800
         db      0x00, 0x84      ;pattern table = 0x0000-0x0800

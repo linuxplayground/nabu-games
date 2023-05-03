@@ -1,9 +1,3 @@
-io_tmsdata:             equ 0xa0        ; NABU
-io_tmslatch:            equ 0xa1        ; NABU
-
-; io_tmsdata:     equ 0x80        ; Z80-Retro!
-; io_tmslatch:    equ 0x81        ; Z80-Retro!
-
 ; pallets
 tms_transparent:                equ 0x00
 tms_black:                      equ 0x01
