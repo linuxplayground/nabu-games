@@ -2,9 +2,18 @@
 ; to work on tms9918a graphics and designed for the nabu and Z80-Retro! and run
 ; on CP/M
 
+is_nabu:        equ 1
+
         include 'macros.asm'
 
         org     0x100
+
+if is_nabu = 1
+; set up kbd isr
+        im      2
+        ld      hl, isrKeyboard
+        ld      (0xff00+4), hl
+endif
 
 ; initialization - setup vdp etc.
         call    tms_clear_vram
@@ -24,6 +33,9 @@
 ; set up player
         call    create_player_sprite
         call    set_player_attributes
+; set up player bullet
+        call    create_bullet_sprite
+        call    set_bullet_attributes
 
 reset:
 ; init gamefield (aliens)
@@ -49,17 +61,25 @@ reset:
         call    draw_shield_layout              ; add the shields to the buffer.
 ; game loop
 .gameloop:
-        call    getjoy
+        ld      a,(joy_status)
         cp      joy_map_left
         jr      z,.player_left
         cp      joy_map_right
         jr      z,.player_right
         cp      joy_map_button
         jr      z,.player_shoot
-        call    getk
+        cp      joy_map_left|joy_map_button
+        jr      z,.player_shoot
+        cp      joy_map_right|joy_map_button
+        jr      z,.player_shoot
+
+        call    isKeyPressed
+        or      a
+        jp      z, .no_key_press
+        call    getChar
         cp      0x1b                            ; escape to quit
         jp      z,cpm_terminate
-        jr      .no_key_press
+        jr      .no_key_press                   ; skip - no action.
 .player_left:
         call    move_player_left
         jr      .no_key_press
@@ -67,7 +87,7 @@ reset:
         call    move_player_right
         jr      .no_key_press
 .player_shoot:
-
+        call    player_shoot
 .no_key_press:
         ld      a, (ticks)                      ; increment ticks.  We animate every 8th vsync
         inc     a
@@ -75,6 +95,7 @@ reset:
         jp      nc, .do_update_game_field
         ld      (ticks),a
         call    tms_wait                        ; game timing is defined by vsync
+        call    animate_bullet
         jp      .gameloop
 .do_update_game_field:                          ; we hit the 8th vsync so time to start calculating the frame buffer
         ld      a,(x_dir)                       ; get the direction of the aliens
@@ -85,7 +106,7 @@ reset:
         ld      a,(game_x_offset)               ; increment x pixel offset
         inc     a
         ld      (game_x_offset),a
-        cp      32                              ; check for right side boundary
+        cp      40                              ; check for right side boundary
         jp      nz,.flush
         ld      a,0
         ld      (x_dir),a                       ; if right side boundary is hit, set direction to 0.
@@ -100,7 +121,7 @@ reset:
         ld      a,(game_x_offset)               ; decrement the x pixel offset
         dec     a
         ld      (game_x_offset),a
-        cp      8                               ; check for left boundary
+        cp      4                               ; check for left boundary
         jp      nz,.flush
         ld      a,1                             ; if left boundary hit, set direction to 1
         ld      (x_dir),a
@@ -133,6 +154,7 @@ game_x_offset:          db 8
 game_y_offset:          db 2
 game_rows:              db 9
 max_rows:               db 11
+bullet_in_flight:       db 0
 
 include 'utils.asm'
 include 'tms.asm'

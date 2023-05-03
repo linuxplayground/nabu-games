@@ -11,6 +11,12 @@ PLAYER_ATTRIBUTES:      db      21*8            ; ypos
                         db      tms_white       ; color
 PLAYER_ATTRIBUTE_LEN:   equ $-PLAYER_ATTRIBUTES
 
+BULLET_ATTRIBUTES:      db      0xd0            ; ypos - D0 means do not display
+                        db      256/2-(16/2)    ; xpos
+                        db      4               ; pattern
+                        db      tms_cyan  ; color
+BULLET_ATTRIBUTE_LEN:   equ $-BULLET_ATTRIBUTES
+
 ; set up the player sprite sp-1
 create_player_sprite:
         ld      de,tms_spritePatternTable
@@ -19,27 +25,87 @@ create_player_sprite:
         call    tms_write_slow        
         ret
 
-; set initial position and color of sprite
+
 set_player_attributes:
         ld      de, tms_spriteAttributeTable + (SPRITE_PLAYER * 4)
         ld      hl, PLAYER_ATTRIBUTES
         ld      bc, PLAYER_ATTRIBUTE_LEN
-        call    tms_wait
-        call    tms_write_fast
+        ; call    tms_wait
+        call    tms_write_slow
+        ret
+; set up initial player bullet sprite
+create_bullet_sprite:
+        ld      de,tms_spritePatternTable + (SRPITE_BULLET*4*8)
+        ld      bc,32
+        ld      hl,bulletSprite
+        call    tms_write_slow
+        ret
+
+set_bullet_attributes:
+        ld      de, tms_spriteAttributeTable + (SRPITE_BULLET * 4)
+        ld      hl, BULLET_ATTRIBUTES
+        ld      bc, BULLET_ATTRIBUTE_LEN
+        call    tms_write_slow
         ret
 
 move_player_left:
         ld      a,(PLAYER_ATTRIBUTES+1)
         dec     a
         dec     a
+        ld      c,a
+        sub     a,4
+        jr      z,.move_player_left_exit
+        ld      a,c
         ld      (PLAYER_ATTRIBUTES+1),a
-        call    set_player_attributes
+        jp      set_player_attributes
+.move_player_left_exit:
+        inc     a
+        inc     a
         ret
 
 move_player_right:
         ld      a,(PLAYER_ATTRIBUTES+1)
         inc     a
         inc     a
+        ld      c,a
+        cp      255-20
+        jr      nc,.move_player_right_exit
+        ld      a,c
         ld      (PLAYER_ATTRIBUTES+1),a
-        call    set_player_attributes
+        jp      set_player_attributes
+.move_player_right_exit:
+        dec     a
+        dec     a
+        ret
+
+; move the bullet sprite into position based on player location.
+player_shoot:
+        ld      a,(bullet_in_flight)
+        or      a
+        jp      nz,.player_shoot_exit
+        ld      a,(PLAYER_ATTRIBUTES+1)
+        add     8                       ; find the midpoint of the player
+        ld      (BULLET_ATTRIBUTES+1),a ; set x
+        ld      a,21*8
+        ld      (BULLET_ATTRIBUTES+0),a ; set y
+        ld      a,1
+        ld      (bullet_in_flight),a    ; flag the bullet as needing to be animated.
+        jp      set_bullet_attributes
+.player_shoot_exit:
+        ret
+
+animate_bullet:
+        ld      a,(bullet_in_flight)
+        or      a
+        jr      z,.animate_bullet_exit
+        ld      a,(BULLET_ATTRIBUTES+0)
+        sub     4
+        ld      (BULLET_ATTRIBUTES+0),a
+        or      a
+        jp      nz,set_bullet_attributes
+        ld      (bullet_in_flight),a
+        ld      a,0xd0
+        ld      (BULLET_ATTRIBUTES+0),a ; set to hidden.
+        jp      set_bullet_attributes
+.animate_bullet_exit:
         ret
