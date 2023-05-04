@@ -2,7 +2,7 @@
 ; to work on tms9918a graphics and designed for the nabu and Z80-Retro! and run
 ; on CP/M
 
-is_nabu:        equ 1
+is_nabu:        equ 0
 
         include 'macros.asm'
 
@@ -61,16 +61,18 @@ reset:
         call    draw_shield_layout              ; add the shields to the buffer.
 ; game loop
 .gameloop:
-        ld      a,(joy_status)
+        or      a                               ; joystick 0
+        call    getJoyStatus
+        
         cp      joy_map_left
         jr      z,.player_left
         cp      joy_map_right
         jr      z,.player_right
         cp      joy_map_button
         jr      z,.player_shoot
-        cp      joy_map_left|joy_map_button
+        cp      joy_map_left&joy_map_button
         jr      z,.player_shoot
-        cp      joy_map_right|joy_map_button
+        cp      joy_map_right&joy_map_button
         jr      z,.player_shoot
 
         call    isKeyPressed

@@ -99,7 +99,7 @@ animate_bullet:
         or      a
         jr      z,.animate_bullet_exit
         ld      a,(BULLET_ATTRIBUTES+0)
-        sub     4
+        sub     6
         ld      (BULLET_ATTRIBUTES+0),a
         or      a
         jp      nz,set_bullet_attributes
