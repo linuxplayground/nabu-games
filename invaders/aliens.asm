@@ -88,8 +88,7 @@ update_game_field:
         add     hl,de
         ex      de,hl
         ld      a,(game_x_offset)
-        sra     a
-        sra     a       ; div 4 because aliens are two tiles each.  otherwise it would have been div 8
+        div4
         ld      (game_field_offset),a
         adddea
 
@@ -131,18 +130,55 @@ update_game_field_1:
         jp      nz,update_game_field_1
         ret
 
+; given a tile xy in de, return the gamefield xy in de
+tile_xy_to_gamefield_xy:
+        ld      a,(game_x_offset)       ; a is x offset in pixels
+        div8                            ; a is x offset in tiles
+        ld      c,a                     ; save x offset
+        ld      a,d                     ; this is the x tile location
+        sub     c                       ; a now is the tile location less the offset
+        and     0xfe                    ; find the left tile
+        div2                            ; reduce to gamefield
+        dec     a
+        ld      d,a
+
+        ld      a,(game_y_offset)       ; a is y offset in tiles
+        ld      c,a                     ; save y offset
+        ld      a,e                     ; this is the y tile location
+        sub     c                       ; a now is the tile location less the offset
+        dec     a
+        ld      e,a
+        ret
+
+; given a gamefield xy in de, kill the object there.
+kill_object_at:
+        ld      a,e     ; y
+        dec     a
+        add     a
+        add     a
+        add     a       ; mul8
+        add     a       ; mul16
+
+        add     d       ; x
+
+        ld      hl,game_field
+        addhla
+        xor     a
+        ld      (hl),a
+        ret
+
 ; initial game field - lays out the initial alien pattern on the left of the
 ; screen.
 init_game_field:    ;0    2   4   6   8  10  12  14  16  18  20  22 24 28 30 32
-        db      17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,  0, 0, 0, 0, 0  ; 0
-        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 1
-        db       9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 2
-        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 3
-        db       9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 4
-        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 5
-        db       1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0, 0, 0, 0  ; 6
-        db       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 7
-        db       1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1                  ; 8
+        db           17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,  0, 0, 0, 0, 0  ; 0
+        db            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 1
+        db            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 2
+        db            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 3
+        db            9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  0, 0, 0, 0, 0  ; 4
+        db            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 5
+        db            1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0, 0, 0, 0  ; 6
+        db            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0  ; 7
+        db            1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1                  ; 8
 init_game_field_size:   equ $-init_game_field
 
 game_field:             ds init_game_field_size, 0

@@ -2,7 +2,7 @@
 ; to work on tms9918a graphics and designed for the nabu and Z80-Retro! and run
 ; on CP/M
 
-is_nabu:        equ 0
+is_nabu:        equ 1
 
         include 'macros.asm'
 
@@ -61,20 +61,20 @@ reset:
         call    draw_shield_layout              ; add the shields to the buffer.
 ; game loop
 .gameloop:
-        or      a                               ; joystick 0
+        xor     a                               ; joystick 0
         call    getJoyStatus
-        
-        cp      joy_map_left
-        jr      z,.player_left
-        cp      joy_map_right
-        jr      z,.player_right
-        cp      joy_map_button
-        jr      z,.player_shoot
-        cp      joy_map_left&joy_map_button
-        jr      z,.player_shoot
-        cp      joy_map_right&joy_map_button
-        jr      z,.player_shoot
-
+        ld      c,a
+        and     joy_map_button
+        jr      z,.not_button
+        call    player_shoot
+.not_button:
+        ld      a,c
+        and     joy_map_left
+        jr      nz,.player_left
+        ld      a,c
+        and     joy_map_right
+        jr      nz,.player_right
+.not_right:
         call    isKeyPressed
         or      a
         jp      z, .no_key_press
@@ -87,9 +87,6 @@ reset:
         jr      .no_key_press
 .player_right:
         call    move_player_right
-        jr      .no_key_press
-.player_shoot:
-        call    player_shoot
 .no_key_press:
         ld      a, (ticks)                      ; increment ticks.  We animate every 8th vsync
         inc     a
@@ -98,6 +95,7 @@ reset:
         ld      (ticks),a
         call    tms_wait                        ; game timing is defined by vsync
         call    animate_bullet
+        call    test_bullet_hit
         jp      .gameloop
 .do_update_game_field:                          ; we hit the 8th vsync so time to start calculating the frame buffer
         ld      a,(x_dir)                       ; get the direction of the aliens
@@ -164,3 +162,4 @@ include 'patterns.asm'
 include 'aliens.asm'
 include 'shield.asm'
 include 'player.asm'
+include 'tile_functions.asm'

@@ -35,11 +35,23 @@ tms_set_backdrop_color:
 
 ; de = write address
 tms_set_write_address:
+        di
         ld      a,e
         out     (io_tmslatch),a
         ld      a,d
         or      0x40
         out     (io_tmslatch),a
+        ei
+        ret
+
+; de = read address
+tms_set_read_address:
+        di
+        ld      a,e
+        out     (io_tmslatch),a
+        ld      a,d
+        out     (io_tmslatch),a
+        ei
         ret
 
 ; color in b

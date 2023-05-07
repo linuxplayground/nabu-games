@@ -14,19 +14,48 @@ adddea: macro
         ld      d, a    ; D = D+carry
 endm
 
+mul4: macro
+        add     hl,hl   ;2
+        add     hl,hl   ;4
+endm
+
+mul8: macro
+        add     hl,hl   ;2
+        add     hl,hl   ;4
+        add     hl,hl   ;8
+endm
+
 mul16: macro
-        add     a,a     ; x2
-        add     a,a     ; x4
-        add     a,a     ; x8
-        add     a,a     ; x16
+        add     hl,hl   ;2
+        add     hl,hl   ;4
+        add     hl,hl   ;8
+        add     hl,hl   ;16
 endm
 
 mul32: macro
-        add     hl,hl
-        add     hl,hl
-        add     hl,hl
-        add     hl,hl
-        add     hl,hl   ; x32
+        add     hl,hl   ;2
+        add     hl,hl   ;4
+        add     hl,hl   ;8
+        add     hl,hl   ;16
+        add     hl,hl   ;x32
+endm
+
+div2: macro
+        and     0xfe       ; remove the bits that get rotated out
+        rra
+endm
+
+div4: macro
+        and     0xfc       ; remove the bits that get rotated out
+        rra
+        rra
+endm
+
+div8:   macro
+        and     0xf8       ; remove the bits that get rotated out
+        rra
+        rra
+        rra
 endm
 
 ; copy data from HL to DE BC times.

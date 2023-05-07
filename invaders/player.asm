@@ -45,7 +45,7 @@ set_bullet_attributes:
         ld      de, tms_spriteAttributeTable + (SRPITE_BULLET * 4)
         ld      hl, BULLET_ATTRIBUTES
         ld      bc, BULLET_ATTRIBUTE_LEN
-        call    tms_write_slow
+        call    tms_write_fast
         ret
 
 move_player_left:
@@ -80,6 +80,7 @@ move_player_right:
 
 ; move the bullet sprite into position based on player location.
 player_shoot:
+        ld      de,(BULLET_ATTRIBUTES)
         ld      a,(bullet_in_flight)
         or      a
         jp      nz,.player_shoot_exit
@@ -94,18 +95,50 @@ player_shoot:
 .player_shoot_exit:
         ret
 
-animate_bullet:
-        ld      a,(bullet_in_flight)
-        or      a
-        jr      z,.animate_bullet_exit
-        ld      a,(BULLET_ATTRIBUTES+0)
-        sub     6
-        ld      (BULLET_ATTRIBUTES+0),a
-        or      a
-        jp      nz,set_bullet_attributes
+kill_bullet:
+        xor     a
         ld      (bullet_in_flight),a
         ld      a,0xd0
         ld      (BULLET_ATTRIBUTES+0),a ; set to hidden.
         jp      set_bullet_attributes
+
+animate_bullet:
+        ; do we even have a bullet?
+        ld      a,(bullet_in_flight)
+        or      a
+        jr      z,.animate_bullet_exit
+        ; yes we do.  Change it's y pos
+        ld      a,(BULLET_ATTRIBUTES+0)
+        sub     4
+        ld      (BULLET_ATTRIBUTES+0),a
+        ; test if bullet is off the top of the screen.
+        ld      a,(BULLET_ATTRIBUTES+0)
+        or      a
+        jp      nz,set_bullet_attributes
+        ; otherwise set bullet in flight flag to 0
+        jp      kill_bullet
 .animate_bullet_exit:
+        ret
+
+; check if the current bullet position matches a pixel of a tile.
+test_bullet_hit:
+        di
+        ld      de,(BULLET_ATTRIBUTES)
+        call    pixel_xy_to_tile_xy
+        call    value_at_tile_xy
+        or      a
+        jr      z,.exit_test_bullet_hit
+        ; a non 0 tile has been found
+        call    fetch_tile_pattern_row
+        ; if pattern is a 0x00, then skip next bit.
+        or      a
+        jp      z,.exit_test_bullet_hit
+        call    test_pattern_collide
+        jr      z,.exit_test_bullet_hit
+        call    kill_bullet
+        ld      de,(tile_y)
+        call    tile_xy_to_gamefield_xy
+        call    kill_object_at
+.exit_test_bullet_hit:
+        ei
         ret

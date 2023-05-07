@@ -5,7 +5,7 @@ con_out:	equ 0x02
 conio:		equ 0x06
 con_status:     equ 0x0b
 
-joy_status:		db  4
+joy_status:		ds  4
 kbd_buffer:		ds  0xff
 kbd_buffer_read_pos:	db 0
 kbd_buffer_write_pos:	db 0
@@ -134,9 +134,11 @@ getJoyStatus:
         or      a
         jr      z,.getJoy0
         ld      a,(joy_status+1)
+        and     0x1f
         ret
 .getJoy0:
         ld      a,(joy_status+0)
+        and     0x1f
         ret
 
 else    ; not a nabu - must be a retro
@@ -157,10 +159,12 @@ getJoyStatus:
         jr      z,.getJoy0
 .getJoy1:
         in      a,(joy1)
+        xor     0xff
         ld      (joy_status+1),a
         ret
 .getJoy0:
         in      a,(joy0)
+        xor     0xff
         ld      (joy_status+0),a
         ret
 
