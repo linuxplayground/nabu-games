@@ -116,10 +116,8 @@ update_game_field_1:
         inc     de              ; bring de to beginning of next row
         jp      .decrement_logic   
 .draw_blank:
-        ; xor     a
-        ; ld      (de),a
+
         inc     de
-        ; ld      (de),a
         inc     de
         ;fall through
 .decrement_logic:

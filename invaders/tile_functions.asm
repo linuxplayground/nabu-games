@@ -52,16 +52,12 @@ value_at_tile_xy:
 ; returns pattern byte in A
 ; clobbers de
 fetch_tile_pattern_row:
-        ld      de,tms_patternTable     ; de is start of pattern table.
+        ld      de,INVADER1             ; de is start of pattern table.
         adddea                          ; add the name value to the start of pattern table.
         ld      a,(tile_px_y)
         adddea                          ; de now points to the row of the pattern
-        call    tms_set_read_address
-        in      a,(io_tmsdata)
-        ; push    hl
-        ; pop     hl
-        ; push    hl
-        ; pop     hl
+        ex      de,hl
+        ld      a,(hl)
         ret
 
 ; Pattern lookup table
@@ -83,9 +79,10 @@ bits:   db      bit0, bit1, bit2, bit3, bit4, bit5, bit6, bit7 ; lookup table.
 ; on the pattern.  We use the bits lookup table defined above to find the specific
 ; bitpattern to match.  We and the pattern row byte with the bit pattern as indexed
 ; by tile_px_x and if the zero flag is set if we don't have a hit
+; Output is A,  Either 0 or some value. if zero no hit.
 test_pattern_collide:
         ld      bc,(tile_px_x)
-        ld      b,0             ; bc has offset into bits.
+        ; ld      b,0             ; bc has offset into bits.
         ld      hl,bits         ; hl has start of bits
         add     hl,bc           ; hl has offset into bits 
         and     (hl)            ; and.
