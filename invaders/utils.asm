@@ -170,6 +170,12 @@ getJoyStatus:
 
 endif
 
+waitForKey:
+        call    isKeyPressed
+        or      a
+        jp      z,waitForKey
+        ret
+
 check_cpm_key:
         ld      c,con_status
         call    bdos
