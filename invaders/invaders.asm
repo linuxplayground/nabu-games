@@ -3,7 +3,7 @@
 ; on CP/M
 
 is_nabu:        equ 1
-game_speed:     equ 12
+game_speed:     equ 8
 player_speed:   equ 2
 bullet_speed:   equ 4
 
@@ -96,12 +96,12 @@ gameloop:
         jp      z,.animate
         inc     a
         ld      (ticks),a
-        jp      .flush
+        jp      .update_game_field
 .animate:
         ; reset ticks before we start
         xor     a
         ld      (ticks),a
-
+        ; jp      .flush                ;;; freeze frame
         ld      a,(x_dir)
         or      a
         jr      z,.aliens_moving_left

@@ -76,8 +76,8 @@ animate_bullet:
         xor     a
         ld      (bullet_active),a
 .animate_bullet_exit:
+        call    test_bullet_hit
         call    set_bullet_attributes    
-        jp      test_bullet_hit
 .animate_bullet_nop:  
         ret
 
@@ -91,22 +91,24 @@ test_bullet_hit:
         ; find the pixel_y_offset and the pixel_x_offset for the bullet pixel location
         
         ; y_tile
-        ld      a,(BULLET_ATTRIBUTES)
-        inc     a
+        ld      c,a
         div8
         ld      (bullet_t_y),a
         ; y_pixel offset
-        ld      a,(BULLET_ATTRIBUTES)
+        ld      a,c
         and     0x07
+
         ld      (bullet_px_y),a
         
         ; x_tile
         ld      a,(BULLET_ATTRIBUTES + 1)
+        ld      c,a
         div8
+        inc     a
         dec     a
         ld      (bullet_t_x),a
         ; x_pixel offset
-        ld      a,(BULLET_ATTRIBUTES + 1)
+        ld      a,c
         and     0x07
         ld      (bullet_px_x),a
 
@@ -127,27 +129,30 @@ test_bullet_hit:
         cp      25
         jr      nc,.not_alien_pattern
         ; read the pattern data for the row identified by VAL + bullet_px_y into PAT
-        ld      c,a
-        ld      a,(bullet_px_y)
-        add     c
+        ; a = pattern name
+        dec     a       ;reduce by 1 because maths.  (If pattern name is a 2 we want to offset from invaders1 by 1x8 not 2x8 to find start of pattern)
+        add     a
+        add     a
+        add     a            ;x8 get the offset into the pattern table starting at invader1
         ld      hl,INVADER1
         addhla
-        ld      a,(hl)
-        ld      b,a     ; b = row pattern
-        ; use the bitmask relating to pixel_x_offset to check if the pixel locations match PAT
-        ld      a,(bullet_px_x)
-        ld      hl,bullet_hit_bits
+        ; get the pattern row offset
+        ld      a,(bullet_px_y)
         addhla
         ld      a,(hl)
-        ld      c,a     ; c= mask bits
-        ld      a,b     ; a= row pattern (restored from b saved earlier)
+        ld      c,a     ; c now has the pattern row bits
+        ; get the mask bit offset
+        ld      a,(bullet_px_x)
+        ld      hl,bullet_hit_bits
+        addhla          ; hl points to the bitmask we want based on x position of the bullet
+        ld      a,(hl)  ; a is the bitmask
         and     c       ; a AND c
-        or      a
         jr      z,.not_pixel_hit
         ; INVADER HIT CONFIRMED
 
         ; subtract x_t_offset from tile_x
         ld      a,(x_t_offset)
+        inc     a
         ld      c,a
         ld      a,(bullet_t_x)
         sub     c
@@ -162,9 +167,7 @@ test_bullet_hit:
         sub     c
         ; divide by 2 result is gamefield_y_offset
         div2
-        ld      (game_field_y),a
         ; use gamefield_(xy)_offsets to calculate gamefield_ram_offset
-        ld      a,(game_field_y)
         ld      l,a
         ld      h,0
         mul16
