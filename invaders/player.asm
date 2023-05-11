@@ -167,6 +167,7 @@ test_bullet_hit:
         sub     c
         ; divide by 2 result is gamefield_y_offset
         div2
+        ld      (game_field_y),a                ; use this later to check if row was cleared.
         ; use gamefield_(xy)_offsets to calculate gamefield_ram_offset
         ld      l,a
         ld      h,0
@@ -178,11 +179,12 @@ test_bullet_hit:
         ; set data at gamefield + gamefield_ram_offset  = 0x00
         xor     a
         ld      (hl),a
-
+        call    update_game_field
         ld      a,0xd0
         ld      (BULLET_ATTRIBUTES),a
         xor     a
         ld      (bullet_active),a
+        call    check_row_clear
         jp      set_bullet_attributes
 .not_pixel_hit:
 .not_alien_pattern:

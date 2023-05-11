@@ -95,7 +95,7 @@ update_game_field:
         ; check if we are done with row
         dec     c
         jr      nz,.update_game_field_col_loop
-        ; done with row - 
+        ; done with row -
         ; draw one last blank column
         xor     a
         ld      (de),a
@@ -147,6 +147,32 @@ clear_game_field:
 
         pop     hl
         pop     de
+        ret
+
+; checks if a row is clear when alien is hit
+; returns number of aliens found in row in A.
+check_row_clear:
+        ld      hl,(game_field_y)
+        ld      h,0
+        mul16   
+        ld      de,game_field
+        add     hl,de   ;hl now points to start of gamefield
+        ld      c,11    ; we check 11 positions
+.check_row_clear_lp:
+        ld      a,(hl)
+        or      a
+        jp      z,.check_row_clear_lp_inc
+        ret             ; we found something in this row, so just return
+.check_row_clear_lp_inc:
+        inc     hl
+        dec     c
+        jp      nz,.check_row_clear_lp
+.check_row_clear_empty:         ; getting to here means there were no aliens found in the row.
+        ld      a,(game_rows)
+        dec     a
+        jp      z,0             ; XXX FORCE QUIT THE GAME all aliens beaten
+        ld      (game_rows),a
+        xor     a
         ret
 
 ; initial game field - lays out the initial alien pattern on the left of the
