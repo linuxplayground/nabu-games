@@ -178,5 +178,6 @@ tms_flush_buffer:
         db      0x0b, 0x87      ;backdrop color = black
 .tms_init_g2_registers_length: equ $-.tms_init_g2_registers
 
+        ds	0x300-(($+0x300)&0x2ff) ; padd out to align tms_buffer on a page boundary.
 ; Frame buffer for graphics mode 2
 tms_buffer:     ds 0x300, 0

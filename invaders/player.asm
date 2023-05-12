@@ -184,6 +184,8 @@ test_bullet_hit:
         ld      (BULLET_ATTRIBUTES),a
         xor     a
         ld      (bullet_active),a
+        ; XXX THERE IS AN EDGE CASE BUG HERE.   If one is able to clear a row that's not the bottom row. then game rows will be decremented.
+        ; we only want to decrement game rows when the bottom most row of aliens is cleared.
         call    check_row_clear
         jp      set_bullet_attributes
 .not_pixel_hit:

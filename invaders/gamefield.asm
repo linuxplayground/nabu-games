@@ -57,6 +57,7 @@ update_game_field:
         ld      (.tmp_y),hl              ; keep track of row as we work our way through the gamefield rows.
         mul32
         ld      a,(x_t_offset)
+        ; XXX IF x_t_offset = 0, then make direction 1
         addhla
         ld      de,tms_buffer
         add     hl,de
