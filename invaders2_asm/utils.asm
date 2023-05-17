@@ -195,7 +195,6 @@ puts:
         ret
 
 cpm_terminate:
-        di
         jp      0
 
 

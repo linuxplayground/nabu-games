@@ -25,7 +25,6 @@ create_player_sprite:
         call    tms_write_slow        
         ret
 
-
 set_player_attributes:
         ld      de, tms_spriteAttributeTable + (SPRITE_PLAYER * 4)
         ld      hl, PLAYER_ATTRIBUTES
@@ -50,6 +49,7 @@ set_bullet_attributes:
 move_player_left:
         ld      a,(PLAYER_ATTRIBUTES + 1)
         sub     player_speed
+        jp      c,.move_player_left_exit
         ld      (PLAYER_ATTRIBUTES + 1),a
 .move_player_left_exit:
         ret
@@ -57,6 +57,8 @@ move_player_left:
 move_player_right:
         ld      a,(PLAYER_ATTRIBUTES + 1)
         add     player_speed
+        cp      240
+        jr      nc,.move_player_right_exit
         ld      (PLAYER_ATTRIBUTES + 1),a
 .move_player_right_exit:
         ret
@@ -83,13 +85,6 @@ animate_bullet:
 
 ; check to see if the bullet is overlapping a tile we care about
 test_bullet_hit:
-        ; push    hl
-        ; push    de
-        ; push    bc
-
-        ; find the tile and pixel offset for the bullet.
-        ; find the pixel_y_offset and the pixel_x_offset for the bullet pixel location
-        
         ; y_tile
         ld      c,a
         div8
@@ -99,13 +94,13 @@ test_bullet_hit:
         and     0x07
 
         ld      (bullet_px_y),a
-        
+
         ; x_tile
         ld      a,(BULLET_ATTRIBUTES + 1)
         ld      c,a
         div8
-        inc     a
-        dec     a
+        ; inc     a
+        ; dec     a
         ld      (bullet_t_x),a
         ; x_pixel offset
         ld      a,c
@@ -150,44 +145,55 @@ test_bullet_hit:
         jr      z,.not_pixel_hit
         ; INVADER HIT CONFIRMED
 
-        ; subtract x_t_offset from tile_x
-        ld      a,(x_t_offset)
-        inc     a
-        ld      c,a
-        ld      a,(bullet_t_x)
-        sub     c
-        ; divide by 2 result is gamefield_x_offset
-        div2
-        ld      (game_field_x),a
-
-        ; subtract y_t_offset from tile_y
-        ld      a,(y_t_offset)
-        ld      c,a
+        ld      ix,invaders
+        ld      b,55
+.lp1:
+        ld      c,(ix+2)
         ld      a,(bullet_t_y)
-        sub     c
-        ; divide by 2 result is gamefield_y_offset
-        div2
-        ld      (game_field_y),a                ; use this later to check if row was cleared.
-        ; use gamefield_(xy)_offsets to calculate gamefield_ram_offset
-        ld      l,a
-        ld      h,0
-        mul16
-        ld      a,(game_field_x)
-        addhla
-        ld      de,game_field
-        add     hl,de
-        ; set data at gamefield + gamefield_ram_offset  = 0x00
+        cp      c
+        jr      nz,.lp3         ; does not match row, check next cell.
+        ; row matched.
+        ld      c,(ix+3)
+        ld      a,(bullet_t_x)
+        cp      c
+        jr      z,.lp2          ; we hit the left side of the tile.
+        inc     c
+        cp      c
+        jr      nz,.lp3         ; we checked the right side of the tile and it wasn't the one we wanted.
+.lp2:
+        ; we have a match
         xor     a
-        ld      (hl),a
-        call    update_game_field
+        ld      (ix+0),a        ; set memory to 0
         ld      a,0xd0
         ld      (BULLET_ATTRIBUTES),a
         xor     a
         ld      (bullet_active),a
-        ; XXX THERE IS AN EDGE CASE BUG HERE.   If one is able to clear a row that's not the bottom row. then game rows will be decremented.
-        ; we only want to decrement game rows when the bottom most row of aliens is cleared.
-        call    check_row_clear
-        jp      set_bullet_attributes
+        
+        ; clear the frame buffer where the alien was.
+        ; SOME TIME IN THE FUTRE WE WILL DRAW A SPLAT SPRITE HERE
+        ld      a,(ix+2)
+        ld      l,a
+        ld      h,0
+        mul32
+        ld      a,(ix+3)
+        addhla
+        ld      de,tms_buffer
+        add     hl,de
+        xor     a
+        ld      (hl),a
+        inc     hl
+        ld      (hl),a
+        ret
+        
+.lp3:
+        inc     ix
+        inc     ix
+        inc     ix
+        inc     ix
+.lp4:
+        djnz    .lp1
+        ret
+
 .not_pixel_hit:
 .not_alien_pattern:
 .test_tile_hit_exit:

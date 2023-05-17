@@ -73,3 +73,17 @@ fillmem: macro start value size
         ld      bc,size
         call    fillmem
 endm
+
+; decrement a variable
+memdec: macro variable
+        ld      a,(variable)
+        dec     a
+        ld      (variable),a
+endm
+
+; increment a variable
+meminc: macro variable
+        ld      a,(variable)
+        inc     a
+        ld      (variable),a
+endm
