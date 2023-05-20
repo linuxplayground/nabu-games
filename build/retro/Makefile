@@ -3,7 +3,8 @@ TOP=../..
 # Name each subdir to build before making the filesystem
 SUBDIRS=\
 	tetris \
-	snake
+	snake \
+	invaders
 
 RElEASEDIRS=\
 	tetris \
