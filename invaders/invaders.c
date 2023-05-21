@@ -13,7 +13,6 @@ uint8_t drop_flag = 0;
 uint8_t top_row = 2;
 uint8_t bottom_row = 10;
 uint8_t num_rows = 5;
-// uint8_t num_cols = 11;
 uint8_t playerx = 120;
 uint8_t update_player = false;
 uint8_t bulletx = 0;
@@ -22,7 +21,7 @@ uint8_t bullet_active = false;
 uint8_t bullet_t_x, bullet_t_y = 0;
 
 // game settings
-uint8_t game_speed = 8;
+uint8_t game_speed = 4;
 uint8_t player_speed = 2;
 uint8_t bullet_speed = 3;
 
@@ -60,7 +59,7 @@ void draw_aliens() {
 
     for (uint8_t i=0; i<num_rows; i++) {
         vdp_setCharAtLocationBuf(invaders[i][0].tx, invaders[i][0].ty, 0);
-        for (uint8_t j=0; j<16; j++) {
+        for (uint8_t j=0; j<11; j++) {
 
             // figure out new x tile location.
             invaders[i][j].px += dir;
@@ -69,7 +68,7 @@ void draw_aliens() {
             invaders[i][j].tx = tx;
             ty = invaders[i][j].ty;
 
-            if (invaders[i][j].lp != 0) {
+            if (invaders[i][j].lp > 0) {
                 tp = invaders[i][j].lp + ((invaders[i][j].px & 0x03) * 2);
                 vdp_setCharAtLocationBuf(tx, ty, tp);
                 vdp_setCharAtLocationBuf(tx + 1, ty, tp + 1);
@@ -87,12 +86,13 @@ void draw_aliens() {
                 vdp_setCharAtLocationBuf(tx + 1, ty, 0);
             }
         }
+        vdp_setCharAtLocationBuf(tx+2, ty, 0);
     }
     dir = new_dir;
 }
 
 void drop_aliens() {
-    for (uint8_t i=0; i<5; i++) {
+    for (uint8_t i=0; i<num_rows; i++) {
         for(uint8_t j=0; j<32; j++) {
             vdp_setCharAtLocationBuf(j, top_row + i*2, 0);
         }
@@ -108,10 +108,6 @@ void drop_aliens() {
 
             if (invaders[i][j].lp != 0) {
                 bottom_row = invaders[i][j].ty;
-                // if(invaders[i][j].tx > temp_x) {
-                //     temp_x = invaders[i][j].tx;
-                //     num_cols ++;
-                // }
             }   
         }
     }
@@ -123,7 +119,10 @@ bool bullet_hit_detection() {
     bullet_t_x = bulletx / 8;
     bullet_t_y = bullety / 8;
     uint8_t apn =  _vdp_textBuffer[bullet_t_y * 32 + bullet_t_x]; //Alien patter name
-    if (apn > 0 && apn < 25) {
+    if (apn == 0) {
+        return false;
+    }
+    if (apn < 25) {
         // Is tile level collision detection good enough?
         for (uint8_t i=0; i<5; i++) {
             if (bullet_t_y == invaders[i][0].ty) {
@@ -135,6 +134,10 @@ bool bullet_hit_detection() {
                 }
             }
         }
+    } else {
+        // BRUTALLY NUKE THE SHIELD.
+        vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, 0);
+        return true;
     }
     return false;
 }
@@ -146,7 +149,6 @@ void main() {
 
     // initialise the player sprite/
     vdp_spriteInit(PLAYER, PLAYER_SPRITE, 120, 176, 15);
-
 
     while (running) {
         ticks ++;
@@ -174,16 +176,16 @@ void main() {
         if (getJoyStatus(0) & Joy_Button) {
             if (!bullet_active) {
                 bulletx = playerx + 8;
-                bullety = 176;
+                bullety = 176 + bullet_speed + bullet_speed;
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
             }
         }
         // Update screen
         if (ticks % game_speed == 0) {
-            num_rows = (bottom_row - top_row) / 2 + 1;
             if (drop_flag) {
                 drop_aliens();
+                num_rows = ((bottom_row - top_row) / 2) + 1;
             }
             draw_aliens();
             ticks = 0;

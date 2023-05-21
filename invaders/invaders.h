@@ -188,6 +188,28 @@ const uint8_t sprites[32*5] = {
         0x20,0x50,0x80,0x28,0x40,0x30,0x00,0x00
 };
 
+const uint8_t set_bit_mask[8] = {
+        0b10000000,
+        0b01000000,
+        0b00100000,
+        0b00010000,
+        0b00001000,
+        0b00000100,
+        0b00000010,
+        0b00000001
+};
+
+const uint8_t clear_bit_mask[8] = {
+        0b01111111,
+        0b10111111,
+        0b11011111,
+        0b11101111,
+        0b11110111,
+        0b11111011,
+        0b11111101,
+        0b11111110
+};
+
 #define PLAYER 1
 #define BULLET 2
 #define BOMB 3
