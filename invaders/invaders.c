@@ -5,10 +5,12 @@
 #include "NABU-LIB.h"
 #include "invaders.h"
 
+uint8_t play_again = 1;
 uint8_t running = 1;
 int8_t dir = 1;
 int8_t new_dir = 1;
 uint8_t ticks = 0;
+uint8_t max_invaders = 55;
 uint8_t drop_flag = 0;
 uint8_t top_row = 2;
 uint8_t bottom_row = 10;
@@ -19,20 +21,36 @@ uint8_t bulletx = 0;
 uint8_t bullety = 176;
 uint8_t bullet_active = false;
 uint8_t bullet_t_x, bullet_t_y = 0;
+uint8_t bombx = 0;
+uint8_t bomby = 0;
+uint8_t bomb_active = false;
+uint8_t bomb_t_x, bomb_t_y = 0;
+uint8_t explode_active = 0;
 
 // game settings
-uint8_t game_speed = 4;
-uint8_t player_speed = 2;
-uint8_t bullet_speed = 3;
+#define GAME_SPEED 8
+#define PLAYER_SPEED 2
+#define BULLET_SPEED 3
+#define BOMB_SPEED  3
+#define EXPLODE_FRAMES 10
+
+
+void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
+    vdp_setWriteAddress(_vdpColorTableAddr + start * 8);
+    for (uint8_t i=0; i<count*8; i++) {
+        IO_VDPDATA = color;
+    }
+}
 
 void initDisplay() {
     initNABULib();
     vdp_clearVRAM();
     vdp_initG2Mode(1, true, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
     vdp_enableVDPReadyInt();
-    vdp_loadPatternTable(patterns,392);
+
     //Load same colour into every colour table cell.
     vdp_setPatternColor(0xe1);
+    vdp_setBackDropColor(VDP_DARK_YELLOW);
     //initG2Mode loads the fb with spaces.  (0x20) We want 0x00.
     uint8_t *start = _vdp_textBuffer;
     uint8_t *end = start + (32 * 24);
@@ -43,6 +61,11 @@ void initDisplay() {
 
     // load sprite patterns
     vdp_loadSpritePatternNameTable(5, sprites);
+
+    // Set up the alien colours
+    load_pattern_colours(1, 8, 0x61);
+    load_pattern_colours(9, 8, 0x51);
+    load_pattern_colours(17, 8, 0x31);
 }
 
 void draw_sheilds() {
@@ -118,17 +141,32 @@ void drop_aliens() {
 bool bullet_hit_detection() {
     bullet_t_x = bulletx / 8;
     bullet_t_y = bullety / 8;
-    uint8_t apn =  _vdp_textBuffer[bullet_t_y * 32 + bullet_t_x]; //Alien patter name
+    uint8_t apn =  _vdp_textBuffer[bullet_t_y * 32 + bullet_t_x]; //Alien pattern name
     if (apn == 0) {
         return false;
     }
     if (apn < 25) {
-        // Is tile level collision detection good enough?
+
+        uint8_t pixels = patterns[(8 * apn) + (bullety % 8)];
+        if ((pixels & set_bit_mask[bulletx % 8]) == 0) {
+            return false;
+        }
+
+        // set the alien lp value to 0 to kill it.
         for (uint8_t i=0; i<5; i++) {
             if (bullet_t_y == invaders[i][0].ty) {
                 for (uint8_t j=0; j<11; j++) {
                     if (bullet_t_x == invaders[i][j].tx || bullet_t_x == invaders[i][j].tx+1) {
                         invaders[i][j].lp = 0;
+                        vdp_waitVDPReadyInt();
+                        vdp_refreshViewPort(); // Remove the thing from view before displaying the explosion sprite.
+                        max_invaders --;
+                        uint8_t tc = 0;
+                        if (apn < 9) tc = 6;
+                        else if (apn < 17) tc = 5;
+                        else tc = 3;
+                        vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, bulletx-8 + (bulletx % 4)*2, bullety-12, tc);
+                        explode_active = EXPLODE_FRAMES;
                         return true;
                     }
                 }
@@ -136,15 +174,53 @@ bool bullet_hit_detection() {
         }
     } else {
         // BRUTALLY NUKE THE SHIELD.
-        vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, 0);
+        if (apn < 31)
+            vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, apn+6);
+        else
+            vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, 0);
         return true;
     }
     return false;
 }
 
-void main() {
-    initDisplay();
+bool bomb_hit_detection() {
+    bomb_t_x = bombx / 8;
+    bomb_t_y = bomby / 8;
+    uint8_t apn =  _vdp_textBuffer[bomb_t_y * 32 + bomb_t_x];
+    if (apn == 0) {
+        return false;
+    } else {
+        if (apn > 36) {
+            vdp_setCharAtLocationBuf(bomb_t_x, bomb_t_y, 0);
+            return true;
+        } else if (apn > 24) {
+            // BRUTALLY NUKE THE SHIELD. (well - it does so in stages.)
+            vdp_setCharAtLocationBuf(bomb_t_x, bomb_t_y, apn+6);
+            return true;
+        }
+    }
+    return false;
+}
 
+// Find an invader in the bottom row that will be our bomber.
+void select_bombing_invader() {
+    uint8_t selected = false;
+    uint8_t x = 0;
+    uint8_t y = 0;
+    do {
+        x = rand() % 11;
+        y = rand() % 5;
+        if (invaders[y][x].lp != 0) {
+            selected = true;
+            bombx = invaders[y][x].tx * 8 + (invaders[y][x].px % 4) + 6;
+            bomby = invaders[y][x].ty * 8;
+        }
+    } while (!selected);
+}
+
+// Play a game.
+void game() {
+    vdp_loadPatternTable(patterns,344); //Aliens and shields
     draw_sheilds();
 
     // initialise the player sprite/
@@ -152,13 +228,18 @@ void main() {
 
     while (running) {
         ticks ++;
+        // have we won?
+        if (max_invaders == 0) {
+            running = false;
+        }
+
         // Check player input.
         if (isKeyPressed()) {
             running = false;
         }
         // Left
         if (getJoyStatus(0) & Joy_Left) {
-            playerx = playerx - player_speed;
+            playerx = playerx - PLAYER_SPEED;
             if (playerx < 8) {
                 playerx = 8;
             }
@@ -166,7 +247,7 @@ void main() {
         }
         // Right
         if (getJoyStatus(0) & Joy_Right) {
-            playerx = playerx + player_speed;
+            playerx = playerx + PLAYER_SPEED;
             if (playerx > 240) {
                 playerx = 240;
             }
@@ -176,13 +257,13 @@ void main() {
         if (getJoyStatus(0) & Joy_Button) {
             if (!bullet_active) {
                 bulletx = playerx + 8;
-                bullety = 176 + bullet_speed + bullet_speed;
+                bullety = 22*8;
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
             }
         }
         // Update screen
-        if (ticks % game_speed == 0) {
+        if (ticks % GAME_SPEED == 0) {
             if (drop_flag) {
                 drop_aliens();
                 num_rows = ((bottom_row - top_row) / 2) + 1;
@@ -198,13 +279,39 @@ void main() {
                     vdp_disableSprite(BULLET);
                     bullet_active = false;
                 } else {
-                    bullety = bullety - bullet_speed;
+                    bullety = bullety - BULLET_SPEED;
                 }
             } else {
                 vdp_disableSprite(BULLET);
                 bullet_active = false;
             }
         }
+
+        // Bomb logic
+        if (bomb_active) {
+            if(bomby < 188) {
+                if (bomb_hit_detection()) {
+                    vdp_disableSprite(BOMB);
+                    bomb_active = false;
+                } else {
+                    bomby = bomby + BOMB_SPEED;
+                }
+            } else {
+                vdp_disableSprite(BOMB);
+                bomb_active = false;
+            }
+            if (vdpStatusRegVal & 0b00100000) {
+                if (bomby > 192-16) {
+                    running = false;
+                }
+            }
+        } else {
+            // select an invader to drop the bomb
+            select_bombing_invader(); //Sets bombx and bomby - because global variables for the win!
+            vdp_spriteInit(BOMB, BOMB_SPRITE, bombx, bomby, 6);
+            bomb_active = true;
+        }
+
         vdp_waitVDPReadyInt();
         // Update player and bullet sprites
          if (update_player) {
@@ -214,10 +321,33 @@ void main() {
         if (bullet_active) {
             vdp_setSpritePosition(BULLET, bulletx, bullety);
         }
+        if (bomb_active) {
+            vdp_setSpritePosition(BOMB, bombx, bomby);
+        }
+        if (explode_active > 0) {
+            explode_active --;
+            if (explode_active == 0) {
+                vdp_disableSprite(EXPLODE);
+                explode_active = EXPLODE_FRAMES;
+            }
+        }
         if (ticks == 0) {
             vdp_waitVDPReadyInt();  // kill a frame.
             vdp_refreshViewPort();
         }
     }
+}
 
+// Display a menu
+void menu() {
+}
+
+void main() {
+    initDisplay();
+
+    while (play_again) {
+        menu();
+        game();
+        play_again = false;
+    }
 }
