@@ -4,28 +4,7 @@
 
 #include "NABU-LIB.h"
 #include "invaders.h"
-
-uint8_t play_again = 1;
-uint8_t running = 1;
-int8_t dir = 1;
-int8_t new_dir = 1;
-uint8_t ticks = 0;
-uint8_t max_invaders = 55;
-uint8_t drop_flag = 0;
-uint8_t top_row = 2;
-uint8_t bottom_row = 10;
-uint8_t num_rows = 5;
-uint8_t playerx = 120;
-uint8_t update_player = false;
-uint8_t bulletx = 0;
-uint8_t bullety = 176;
-uint8_t bullet_active = false;
-uint8_t bullet_t_x, bullet_t_y = 0;
-uint8_t bombx = 0;
-uint8_t bomby = 0;
-uint8_t bomb_active = false;
-uint8_t bomb_t_x, bomb_t_y = 0;
-uint8_t explode_active = 0;
+#include "string.h"
 
 // game settings
 #define GAME_SPEED 8
@@ -42,6 +21,16 @@ void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
     }
 }
 
+void clear_screen() {
+    //initG2Mode loads the fb with spaces.  (0x20) We want 0x00.
+    uint8_t *start = _vdp_textBuffer;
+    uint8_t *end = start + (32 * 24);
+    do {
+        *start = 0x00;
+        start++;
+    } while (start != end);
+}
+
 void initDisplay() {
     initNABULib();
     vdp_clearVRAM();
@@ -51,13 +40,8 @@ void initDisplay() {
     //Load same colour into every colour table cell.
     vdp_setPatternColor(0xe1);
     vdp_setBackDropColor(VDP_DARK_YELLOW);
-    //initG2Mode loads the fb with spaces.  (0x20) We want 0x00.
-    uint8_t *start = _vdp_textBuffer;
-    uint8_t *end = start + (32 * 24);
-    do {
-        *start = 0x00;
-        start++;
-    } while (start != end);
+
+    clear_screen();
 
     // load sprite patterns
     vdp_loadSpritePatternNameTable(5, sprites);
@@ -165,7 +149,7 @@ bool bullet_hit_detection() {
                         if (apn < 9) tc = 6;
                         else if (apn < 17) tc = 5;
                         else tc = 3;
-                        vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, bulletx-8 + (bulletx % 4)*2, bullety-12, tc);
+                        vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, (invaders[i][j].px * 2) - 4 , bullety-8, tc);
                         explode_active = EXPLODE_FRAMES;
                         return true;
                     }
@@ -218,14 +202,43 @@ void select_bombing_invader() {
     } while (!selected);
 }
 
-// Play a game.
-void game() {
+void new_game() {
+    clear_screen();
     vdp_loadPatternTable(patterns,344); //Aliens and shields
     draw_sheilds();
 
     // initialise the player sprite/
     vdp_spriteInit(PLAYER, PLAYER_SPRITE, 120, 176, 15);
+    // initialise default invader positions
+    memcpy(invaders, invaders_default, sizeof(invaders));
+    vdp_disableSprite(BOMB);
+    vdp_disableSprite(BULLET);
+    vdp_disableSprite(EXPLODE);
+    running = 1;
+    dir = 1;
+    new_dir = 1;
+    ticks = 0;
+    max_invaders = 55;
+    drop_flag = 0;
+    top_row = 2;
+    bottom_row = 10;
+    num_rows = 5;
+    playerx = 120;
+    update_player = false;
+    bulletx = 0;
+    bullety = 176;
+    bullet_active = false;
+    bullet_t_x, bullet_t_y = 0;
+    first_bomb_delay = 120;  //2 seconds before first bomb.
+    bombx = 0;
+    bomby = 0;
+    bomb_active = false;
+    bomb_t_x, bomb_t_y = 0;
+    explode_active = 0;
+}
 
+// Play a game.
+void game() {
     while (running) {
         ticks ++;
         // have we won?
@@ -300,16 +313,25 @@ void game() {
                 vdp_disableSprite(BOMB);
                 bomb_active = false;
             }
-            if (vdpStatusRegVal & 0b00100000) {
-                if (bomby > 192-16) {
-                    running = false;
+            if ((vdpStatusRegVal & 0b00100000)>0) {
+                if (bomby > 176) {
+                    if( bombx > playerx && bombx < playerx + 16 ) {
+                        vdp_disableSprite(PLAYER);
+                        vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, playerx, 176, 15);
+                        running = false;
+                    }
                 }
             }
         } else {
-            // select an invader to drop the bomb
-            select_bombing_invader(); //Sets bombx and bomby - because global variables for the win!
-            vdp_spriteInit(BOMB, BOMB_SPRITE, bombx, bomby, 6);
-            bomb_active = true;
+            if(first_bomb_delay == 0) {
+                // select an invader to drop the bomb
+                select_bombing_invader(); //Sets bombx and bomby - because global variables for the win!
+                vdp_spriteInit(BOMB, BOMB_SPRITE, bombx, bomby, 6);
+                bomb_active = true;
+            } else {
+                first_bomb_delay --;
+            }
+
         }
 
         vdp_waitVDPReadyInt();
@@ -339,15 +361,26 @@ void game() {
 }
 
 // Display a menu
-void menu() {
+bool menu() {
+
+    uint8_t k = getChar();
+    if(k == 0x1b) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 void main() {
     initDisplay();
-
+    bool play_again = true;
     while (play_again) {
-        menu();
-        game();
-        play_again = false;
+        if (menu()) {
+            new_game();
+            running = true;
+            game();
+        } else {
+            play_again = false;
+        };
     }
 }

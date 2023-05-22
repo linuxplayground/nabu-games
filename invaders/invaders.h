@@ -56,7 +56,9 @@ typedef struct invader {
         uint8_t px;             // pixel x
 } invader;
 
-invader invaders[5][16] = {
+invader invaders[5][16];
+
+const invader invaders_default[5][16] = {
         {
                 {17,1 ,2,  8},
                 {17,3 ,2, 16},
@@ -213,3 +215,25 @@ const uint8_t clear_bit_mask[8] = {
 #define BULLET_SPRITE 2
 #define BOMB_SPRITE 3
 #define EXPLODE_SPRITE 4
+
+uint8_t running;
+int8_t dir;
+int8_t new_dir;
+uint8_t ticks;
+uint8_t max_invaders;
+uint8_t drop_flag;
+uint8_t top_row;
+uint8_t bottom_row;
+uint8_t num_rows;
+uint8_t playerx;
+uint8_t update_player;
+uint8_t bulletx;
+uint8_t bullety;
+uint8_t bullet_active;
+uint8_t bullet_t_x, bullet_t_y;
+uint8_t first_bomb_delay;
+uint8_t bombx;
+uint8_t bomby;
+uint8_t bomb_active;
+uint8_t bomb_t_x, bomb_t_y;
+uint8_t explode_active;
