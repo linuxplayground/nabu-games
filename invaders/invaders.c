@@ -5,14 +5,34 @@
 #include "NABU-LIB.h"
 #include "invaders.h"
 #include "string.h"
+#include "nabu-games-patterns.h"
+#include "audio.h"
 
-// game settings
-#define GAME_SPEED 8
-#define PLAYER_SPEED 2
-#define BULLET_SPEED 3
-#define BOMB_SPEED  3
-#define EXPLODE_FRAMES 10
+uint16_t getHighScore() {
+    uint16_t hs;
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("invaders.dat", "r");
+        if (fp) {
+            fscanf(fp, "%d", &hs);
+        } else {
+            hs = 0;
+        }
+        fclose(fp);
+    #else
+        hs = 0;
+    #endif
+    return hs;
+}
 
+void setHighScore(uint16_t hs) __z88dk_fastcall {
+    #if BIN_TYPE == BIN_CPM
+        FILE * fp = fopen("invaders.dat", "w");
+        fprintf(fp, "%d", hs);
+        fclose(fp);
+    #else
+        (void)hs;
+    #endif
+}
 
 void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
     vdp_setWriteAddress(_vdpColorTableAddr + start * 8);
@@ -21,35 +41,52 @@ void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
     }
 }
 
-void clear_screen() {
-    //initG2Mode loads the fb with spaces.  (0x20) We want 0x00.
-    uint8_t *start = _vdp_textBuffer;
-    uint8_t *end = start + (32 * 24);
-    do {
-        *start = 0x00;
-        start++;
-    } while (start != end);
+/* Delay routine synced to the VDP interrupts (1 frame = 1/60 seconds)*/
+void delay(uint8_t frames) {
+    while (frames > 0) {
+        vdp_waitVDPReadyInt();
+        frames --;
+    }
+}
+
+void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
+    uint16_t offset = y * _vdpCursorMaxXFull + x;
+    uint8_t *start = text;
+
+    while (*start != 0x00) {
+      _vdp_textBuffer[offset] = *start;
+      offset++;
+      start++;
+    }
+}
+
+/* Write some text on the screen centered and at y location.*/
+void centerText(char *text, uint8_t y) {
+    printAtLocationBuf(abs(15-(strlen(text)/2)),y,text);
 }
 
 void initDisplay() {
     initNABULib();
     vdp_clearVRAM();
     vdp_initG2Mode(1, true, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
+
     vdp_enableVDPReadyInt();
+
+    vdp_loadPatternTable(patterns, 0x3C0);
 
     //Load same colour into every colour table cell.
     vdp_setPatternColor(0xe1);
-    vdp_setBackDropColor(VDP_DARK_YELLOW);
 
-    clear_screen();
+    vdp_setBackDropColor(VDP_DARK_YELLOW);
 
     // load sprite patterns
     vdp_loadSpritePatternNameTable(5, sprites);
 
     // Set up the alien colours
-    load_pattern_colours(1, 8, 0x61);
-    load_pattern_colours(9, 8, 0x51);
-    load_pattern_colours(17, 8, 0x31);
+    load_pattern_colours(0x60, 8, 0x61);
+    load_pattern_colours(0x68, 8, 0x51);
+    load_pattern_colours(0x70, 8, 0x31);
+
 }
 
 void draw_sheilds() {
@@ -57,6 +94,16 @@ void draw_sheilds() {
         vdp_setCharAtLocationBuf(i+5, 20, shield_layout[0][i]);
         vdp_setCharAtLocationBuf(i+5, 21, shield_layout[1][i]);
     }
+    for (uint8_t i=0; i<32; i++) {
+        vdp_setCharAtLocationBuf(i,1,0x13);
+    }
+    printAtLocationBuf(19, 0, "SCORE:");
+    sprintf(tb, "%06d", score);
+    printAtLocationBuf(26, 0, tb);
+
+    printAtLocationBuf(0, 0, "HIGH SCORE:");
+    sprintf(tb, "%06d", high_score);
+    printAtLocationBuf(12, 0, tb);
 }
 
 void draw_aliens() {
@@ -129,26 +176,44 @@ bool bullet_hit_detection() {
     if (apn == 0) {
         return false;
     }
-    if (apn < 25) {
-
-        uint8_t pixels = patterns[(8 * apn) + (bullety % 8)];
+    if (apn > 0x5F && apn < 0x78) {
+        uint16_t apn_offset = (apn * 8) + (bullety % 8) -4;
+        uint8_t pixels = patterns[apn_offset];
         if ((pixels & set_bit_mask[bulletx % 8]) == 0) {
-            return false;
+            pixels = patterns[apn_offset + 1];
+            if ((pixels & set_bit_mask[bulletx % 8]) == 0) {
+                pixels = patterns[apn_offset + 2];
+                if ((pixels & set_bit_mask[bulletx % 8]) == 0) {
+                    pixels = patterns[apn_offset + 3];
+                    if ((pixels & set_bit_mask[bulletx % 8]) == 0) {
+                        return false;
+                    }
+                }
+            }
         }
 
         // set the alien lp value to 0 to kill it.
         for (uint8_t i=0; i<5; i++) {
             if (bullet_t_y == invaders[i][0].ty) {
                 for (uint8_t j=0; j<11; j++) {
-                    if (bullet_t_x == invaders[i][j].tx || bullet_t_x == invaders[i][j].tx+1) {
+                    if (bullet_t_x >= invaders[i][j].tx-1 && bullet_t_x <= invaders[i][j].tx + 1) {
                         invaders[i][j].lp = 0;
                         vdp_waitVDPReadyInt();
                         vdp_refreshViewPort(); // Remove the thing from view before displaying the explosion sprite.
                         max_invaders --;
                         uint8_t tc = 0;
-                        if (apn < 9) tc = 6;
-                        else if (apn < 17) tc = 5;
-                        else tc = 3;
+                        if (apn < 0x68) {
+                            tc = 6;
+                            score = score + 5;
+                        }
+                        else if (apn < 0x70) {
+                            tc = 5;
+                            score = score + 25;
+                        }
+                        else {
+                            tc = 3;
+                            score = score + 45;
+                        }
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, (invaders[i][j].px * 2) - 4 , bullety-8, tc);
                         explode_active = EXPLODE_FRAMES;
                         return true;
@@ -158,11 +223,13 @@ bool bullet_hit_detection() {
         }
     } else {
         // BRUTALLY NUKE THE SHIELD.
-        if (apn < 31)
+        if (apn < 0x0D) {
             vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, apn+6);
-        else
+            return true;
+        } else if (apn < 0x13) {
             vdp_setCharAtLocationBuf(bullet_t_x, bullet_t_y, 0);
-        return true;
+            return true;
+        }
     }
     return false;
 }
@@ -174,12 +241,12 @@ bool bomb_hit_detection() {
     if (apn == 0) {
         return false;
     } else {
-        if (apn > 36) {
-            vdp_setCharAtLocationBuf(bomb_t_x, bomb_t_y, 0);
-            return true;
-        } else if (apn > 24) {
-            // BRUTALLY NUKE THE SHIELD. (well - it does so in stages.)
+        // BRUTALLY NUKE THE SHIELD.
+        if (apn < 0x0D) {
             vdp_setCharAtLocationBuf(bomb_t_x, bomb_t_y, apn+6);
+            return true;
+        } else if (apn < 0x13) {
+            vdp_setCharAtLocationBuf(bomb_t_x, bomb_t_y, 0);
             return true;
         }
     }
@@ -203,8 +270,11 @@ void select_bombing_invader() {
 }
 
 void new_game() {
-    clear_screen();
-    vdp_loadPatternTable(patterns,344); //Aliens and shields
+
+    vdp_waitVDPReadyInt();
+    uint8_t tmp = IO_VDPLATCH;  //dummy read
+    vdp_clearScreen();
+
     draw_sheilds();
 
     // initialise the player sprite/
@@ -235,6 +305,9 @@ void new_game() {
     bomb_active = false;
     bomb_t_x, bomb_t_y = 0;
     explode_active = 0;
+    if( !level_up) {
+        score = 0;
+    }
 }
 
 // Play a game.
@@ -243,6 +316,7 @@ void game() {
         ticks ++;
         // have we won?
         if (max_invaders == 0) {
+            level_up = true;
             running = false;
         }
 
@@ -270,13 +344,24 @@ void game() {
         if (getJoyStatus(0) & Joy_Button) {
             if (!bullet_active) {
                 bulletx = playerx + 8;
-                bullety = 22*8;
+                bullety = 177;
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
+
+                // pew
+                bullet_note = 8;
+                ayWrite(AY_CHA_TONE_L, bullet_note);
+                ayWrite(AY_CHB_TONE_L, bullet_note);
+                ayWrite(AY_CHA_TONE_H, 0x00);
+                ayWrite(AY_ENABLES, 0b01111000); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
+                ayWrite(AY_CHA_AMPL, 0x10); //amplitude controlled by envelope
+                ayWrite(AY_ENV_PERIOD_L, 0x00); //Envelope period fine
+                ayWrite(AY_ENV_PERIOD_H, 0x08); //Envelope period course
+                ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT); //Envelope shape
             }
         }
         // Update screen
-        if (ticks % GAME_SPEED == 0) {
+        if (ticks % game_speed == 0) {
             if (drop_flag) {
                 drop_aliens();
                 num_rows = ((bottom_row - top_row) / 2) + 1;
@@ -287,12 +372,29 @@ void game() {
 
         // Bullet logic
         if (bullet_active) {
-            if (bullety > 4) {
+            if (bullety > 16) {
                 if (bullet_hit_detection()) {
                     vdp_disableSprite(BULLET);
                     bullet_active = false;
+                    sprintf(tb, "%06d", score);
+                    printAtLocationBuf(26, 0, tb);
+                    if (score > high_score) {
+                        high_score = score;
+                        sprintf(tb, "%06d", high_score);
+                        printAtLocationBuf(12, 0, tb);
+                    }
+                    //boom
+                    ayWrite(AY_CHC_AMPL, 0x1F);
+                    ayWrite(AY_NOISE_GEN, 0x1F);
+                    ayWrite(AY_ENV_PERIOD_L, 0x00);
+                    ayWrite(AY_ENV_PERIOD_H, 0x0F);
+                    ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+                    ayWrite(AY_ENABLES, 0b01000111);
                 } else {
                     bullety = bullety - BULLET_SPEED;
+                    bullet_note += 8;
+                    ayWrite(AY_CHA_TONE_L, bullet_note);
+                    ayWrite(AY_CHB_TONE_L, bullet_note);
                 }
             } else {
                 vdp_disableSprite(BULLET);
@@ -306,6 +408,13 @@ void game() {
                 if (bomb_hit_detection()) {
                     vdp_disableSprite(BOMB);
                     bomb_active = false;
+                    //boom
+                    ayWrite(AY_CHC_AMPL, 0x1F);
+                    ayWrite(AY_NOISE_GEN, 0x06);
+                    ayWrite(AY_ENV_PERIOD_L, 0x00);
+                    ayWrite(AY_ENV_PERIOD_H, 0x0a);
+                    ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+                    ayWrite(AY_ENABLES, 0b01000111);
                 } else {
                     bomby = bomby + BOMB_SPEED;
                 }
@@ -319,6 +428,15 @@ void game() {
                         vdp_disableSprite(PLAYER);
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, playerx, 176, 15);
                         running = false;
+                        // From snake. - Disaster!
+                        ayWrite(6,  0x0f); //Noise Period
+                        ayWrite(7,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
+                        ayWrite(8,  0x10); //amplitude controlled by envelope
+                        ayWrite(9,  0x10); //amplitude controlled by envelope
+                        ayWrite(10, 0x10); //amplitude controlled by envelope
+                        ayWrite(11, 0xa0); //Envelope period fine
+                        ayWrite(12, 0x40); //Envelope period course
+                        ayWrite(13, 0x00); //Envelope shape
                     }
                 }
             }
@@ -351,6 +469,7 @@ void game() {
             if (explode_active == 0) {
                 vdp_disableSprite(EXPLODE);
                 explode_active = EXPLODE_FRAMES;
+                ayWrite(7,  0b01111000); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
             }
         }
         if (ticks == 0) {
@@ -358,29 +477,85 @@ void game() {
             vdp_refreshViewPort();
         }
     }
+    delay(60);
 }
 
 // Display a menu
 bool menu() {
+    vdp_waitVDPReadyInt();
+    uint8_t tmp = IO_VDPLATCH;  //dummy read
+    vdp_clearScreen();
 
-    uint8_t k = getChar();
-    if(k == 0x1b) {
-        return false;
+    if (level_up == false) {
+        centerText("JOYSTICK ONLY",8);
+        centerText("BTN TO PLAY AGAIN",11);
     } else {
-        return true;
+        centerText("BTN TO PLAY NEXT LEVEL",11);
+    }
+
+    centerText("INVADERS - V3.5",4);
+    centerText("BY PRODUCTIONDAVE",5);
+    
+    high_score = getHighScore();
+    centerText("SCORE:     ",13);
+    sprintf(tb, "%06d", score);
+    printAtLocationBuf(17, 13, tb);
+
+    centerText("HIGH SCORE:     ",14);
+    sprintf(tb, "%06d", high_score);
+    printAtLocationBuf(19, 14, tb);
+
+    centerText("ESC TO QUIT",16);
+
+    vdp_waitVDPReadyInt();
+    tmp = IO_VDPLATCH;  //dummy read
+    vdp_waitVDPReadyInt();
+    vdp_refreshViewPort(); 
+
+    while (true) {
+        if (getJoyStatus(0) & Joy_Button) {
+            return true;
+        }
+        if (isKeyPressed()) {
+            if (getChar() == 0x1b) {
+                return false;
+            } else {
+                return true;
+            }
+        }
     }
 }
 
 void main() {
     initDisplay();
-    bool play_again = true;
+    play_again = true;
+    level_up = false;
+    game_speed = DEFAULT_GAME_SPEED;
+    score = 0;
     while (play_again) {
         if (menu()) {
+            delay(60);
             new_game();
-            running = true;
             game();
+            if (level_up) {
+                if(game_speed > 2)
+                    game_speed -= 2;
+            } else {
+                game_speed = 8;
+                level_up = false;
+            };
         } else {
             play_again = false;
         };
+        setHighScore(high_score);
     }
+    
+    vdp_disableVDPReadyInt();
+
+    #if BIN_TYPE == BIN_HOMEBREW
+    __asm
+        di
+        rst 0x00
+    __endasm;
+    #endif
 }
