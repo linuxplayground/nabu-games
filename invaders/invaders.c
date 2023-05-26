@@ -167,6 +167,8 @@ void drop_aliens() {
     }
     top_row ++;
     drop_flag = 0;
+    if (alien_note < 66)
+        alien_note += 6;
 }
 
 bool bullet_hit_detection() {
@@ -216,6 +218,12 @@ bool bullet_hit_detection() {
                         }
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, (invaders[i][j].px * 2) - 4 , bullety-8, tc);
                         explode_active = EXPLODE_FRAMES;
+                        //boom
+                        ayWrite(AY_CHC_AMPL, 0x10);
+                        ayWrite(AY_NOISE_GEN, 0x1F);
+                        ayWrite(AY_ENV_PERIOD_L, 0x00);
+                        ayWrite(AY_ENV_PERIOD_H, 0x0F);
+                        ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
                         return true;
                     }
                 }
@@ -308,10 +316,15 @@ void new_game() {
     if( !level_up) {
         score = 0;
     }
+    alien_note = 0;
+    beat_counter = 0;
 }
 
 // Play a game.
 void game() {
+
+    ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A
+
     while (running) {
         ticks ++;
         // have we won?
@@ -349,15 +362,7 @@ void game() {
                 bullet_active = true;
 
                 // pew
-                bullet_note = 8;
-                ayWrite(AY_CHA_TONE_L, bullet_note);
-                ayWrite(AY_CHB_TONE_L, bullet_note);
-                ayWrite(AY_CHA_TONE_H, 0x00);
-                ayWrite(AY_ENABLES, 0b01111000); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
-                ayWrite(AY_CHA_AMPL, 0x10); //amplitude controlled by envelope
-                ayWrite(AY_ENV_PERIOD_L, 0x00); //Envelope period fine
-                ayWrite(AY_ENV_PERIOD_H, 0x08); //Envelope period course
-                ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT); //Envelope shape
+                playNoteDelay(0,60,8);
             }
         }
         // Update screen
@@ -367,6 +372,15 @@ void game() {
                 num_rows = ((bottom_row - top_row) / 2) + 1;
             }
             draw_aliens();
+            beat_counter ++;
+            if (beat_counter == 4) {
+                ayWrite(AY_CHB_AMPL, 0x10);
+                playNoteDelay(1, alien_note, 8);
+                beat_counter = 0;
+            } else if (beat_counter == 2) {
+                ayWrite(AY_CHB_AMPL, 0x10);
+                playNoteDelay(1, alien_note - 3, 8);
+            }
             ticks = 0;
         }
 
@@ -383,18 +397,9 @@ void game() {
                         sprintf(tb, "%06d", high_score);
                         printAtLocationBuf(12, 0, tb);
                     }
-                    //boom
-                    ayWrite(AY_CHC_AMPL, 0x1F);
-                    ayWrite(AY_NOISE_GEN, 0x1F);
-                    ayWrite(AY_ENV_PERIOD_L, 0x00);
-                    ayWrite(AY_ENV_PERIOD_H, 0x0F);
-                    ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
-                    ayWrite(AY_ENABLES, 0b01000111);
+
                 } else {
                     bullety = bullety - BULLET_SPEED;
-                    bullet_note += 8;
-                    ayWrite(AY_CHA_TONE_L, bullet_note);
-                    ayWrite(AY_CHB_TONE_L, bullet_note);
                 }
             } else {
                 vdp_disableSprite(BULLET);
@@ -408,13 +413,6 @@ void game() {
                 if (bomb_hit_detection()) {
                     vdp_disableSprite(BOMB);
                     bomb_active = false;
-                    //boom
-                    ayWrite(AY_CHC_AMPL, 0x1F);
-                    ayWrite(AY_NOISE_GEN, 0x06);
-                    ayWrite(AY_ENV_PERIOD_L, 0x00);
-                    ayWrite(AY_ENV_PERIOD_H, 0x0a);
-                    ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
-                    ayWrite(AY_ENABLES, 0b01000111);
                 } else {
                     bomby = bomby + BOMB_SPEED;
                 }
@@ -469,7 +467,6 @@ void game() {
             if (explode_active == 0) {
                 vdp_disableSprite(EXPLODE);
                 explode_active = EXPLODE_FRAMES;
-                ayWrite(7,  0b01111000); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
             }
         }
         if (ticks == 0) {
@@ -482,6 +479,7 @@ void game() {
 
 // Display a menu
 bool menu() {
+    ayWrite(AY_ENABLES, 0b01111111); // disable all sounds
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
     vdp_clearScreen();

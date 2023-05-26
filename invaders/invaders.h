@@ -312,7 +312,6 @@ uint8_t bulletx;
 uint8_t bullety;
 uint8_t bullet_active;
 uint8_t bullet_t_x, bullet_t_y;
-uint8_t bullet_note;
 uint8_t first_bomb_delay;
 uint8_t bombx;
 uint8_t bomby;
@@ -323,5 +322,7 @@ uint16_t score;
 uint16_t high_score;
 bool play_again;
 bool level_up;
+uint8_t alien_note;
+uint8_t beat_counter;
 
 char tb[6] = { 0 };
