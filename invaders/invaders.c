@@ -167,8 +167,6 @@ void drop_aliens() {
     }
     top_row ++;
     drop_flag = 0;
-    if (alien_note < 66)
-        alien_note += 6;
 }
 
 bool bullet_hit_detection() {
@@ -362,7 +360,7 @@ void game() {
                 bullet_active = true;
 
                 // pew
-                playNoteDelay(0,60,8);
+                playNoteDelay(0,60,4);
             }
         }
         // Update screen
@@ -370,6 +368,7 @@ void game() {
             if (drop_flag) {
                 drop_aliens();
                 num_rows = ((bottom_row - top_row) / 2) + 1;
+                alien_note = 24-((max_invaders / 8) * 4);
             }
             draw_aliens();
             beat_counter ++;
@@ -390,6 +389,7 @@ void game() {
                 if (bullet_hit_detection()) {
                     vdp_disableSprite(BULLET);
                     bullet_active = false;
+
                     sprintf(tb, "%06d", score);
                     printAtLocationBuf(26, 0, tb);
                     if (score > high_score) {
@@ -435,6 +435,7 @@ void game() {
                         ayWrite(11, 0xa0); //Envelope period fine
                         ayWrite(12, 0x40); //Envelope period course
                         ayWrite(13, 0x00); //Envelope shape
+                        level_up = false;
                     }
                 }
             }
