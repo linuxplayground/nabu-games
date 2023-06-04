@@ -80,7 +80,7 @@ void initDisplay() {
     vdp_setBackDropColor(VDP_DARK_YELLOW);
 
     // load sprite patterns
-    vdp_loadSpritePatternNameTable(5, sprites);
+    vdp_loadSpritePatternNameTable(6, sprites);
 
     // Set up the alien colours
     load_pattern_colours(0x60, 8, 0x61);
@@ -162,7 +162,7 @@ void drop_aliens() {
 
             if (invaders[i][j].lp != 0) {
                 bottom_row = invaders[i][j].ty;
-            }   
+            }
         }
     }
     top_row ++;
@@ -222,6 +222,8 @@ bool bullet_hit_detection() {
                         ayWrite(AY_ENV_PERIOD_L, 0x00);
                         ayWrite(AY_ENV_PERIOD_H, 0x0F);
                         ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+
+                        game_speed = 2 + (max_invaders/8);
                         return true;
                     }
                 }
@@ -314,8 +316,10 @@ void new_game() {
     if( !level_up) {
         score = 0;
     }
-    alien_note = 0;
-    beat_counter = 0;
+    alien_note_index = 0;
+    beat_counter = 4;
+    fire_count = 0;
+    fire_count_index = 0;
 }
 
 // Play a game.
@@ -368,17 +372,16 @@ void game() {
             if (drop_flag) {
                 drop_aliens();
                 num_rows = ((bottom_row - top_row) / 2) + 1;
-                alien_note = 24-((max_invaders / 8) * 4);
             }
             draw_aliens();
-            beat_counter ++;
-            if (beat_counter == 4) {
-                ayWrite(AY_CHB_AMPL, 0x10);
-                playNoteDelay(1, alien_note, 8);
-                beat_counter = 0;
-            } else if (beat_counter == 2) {
-                ayWrite(AY_CHB_AMPL, 0x10);
-                playNoteDelay(1, alien_note - 3, 8);
+            beat_counter --;
+            if (beat_counter == 0 ) {
+                alien_note_index ++;
+                if (alien_note_index > 3)
+                    alien_note_index = 0;
+                ayWrite(AY_CHB_AMPL, 0x0F);
+                playNoteDelay(1, alien_notes[alien_note_index], 6);
+                beat_counter = 4;
             }
             ticks = 0;
         }
@@ -536,13 +539,14 @@ void main() {
             delay(60);
             new_game();
             game();
-            if (level_up) {
-                if(game_speed > 2)
-                    game_speed -= 2;
-            } else {
-                game_speed = 8;
-                level_up = false;
-            };
+            game_speed = DEFAULT_GAME_SPEED;
+            // if (level_up) {
+            //     if(game_speed > 2)
+            //         game_speed -= 2;
+            // } else {
+            //     game_speed = DEFAULT_GAME_SPEED;
+            //     level_up = false;
+            // };
         } else {
             play_again = false;
         };
