@@ -488,7 +488,7 @@ bool menu() {
     printAtLocationBuf(13-(8/2),17,"ESC QUIT");
     printAtLocationBuf(13-(10/2),19,"PRODUCTION");
     printAtLocationBuf(13-(4/2),20,"DAVE");
-    printAtLocationBuf(13-(4/2),21,"V3.4");
+    printAtLocationBuf(13-(4/2),21,"V3.5");
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
@@ -519,6 +519,10 @@ void main() {
     __asm
         di
         rst 0x00
+    __endasm;
+    #else
+    __asm
+        jp 0
     __endasm;
     #endif
 }

@@ -287,12 +287,14 @@ const uint8_t clear_bit_mask[8] = {
 #define BULLET 2
 #define BOMB 3
 #define EXPLODE 4
+#define UFO 5
 
 #define EMPTY_SPRITE 0
 #define PLAYER_SPRITE 1
 #define BULLET_SPRITE 2
 #define BOMB_SPRITE 3
 #define EXPLODE_SPRITE 4
+#define UFO_SPRITE 5
 
 // game settings
 #define DEFAULT_GAME_SPEED 8
@@ -331,8 +333,9 @@ uint8_t alien_note_index;
 uint8_t alien_notes[4] = {10, 9, 7, 5};
 uint8_t beat_counter;
 
-uint8_t fire_count;
 uint8_t fire_count_index;
 uint16_t ufo_scores[16] = {100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100, 50};
+uint8_t ufo_active;
+uint8_t ufo_x;
 
 char tb[6] = { 0 };

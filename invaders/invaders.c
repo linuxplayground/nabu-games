@@ -318,8 +318,8 @@ void new_game() {
     }
     alien_note_index = 0;
     beat_counter = 4;
-    fire_count = 0;
     fire_count_index = 0;
+    ufo_active = false;
 }
 
 // Play a game.
@@ -362,11 +362,15 @@ void game() {
                 bullety = 177;
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
-
                 // pew
                 playNoteDelay(0,60,4);
+                fire_count_index --;
+                if (fire_count_index == 0) {
+                    fire_count_index = 15;
+                }
             }
         }
+
         // Update screen
         if (ticks % game_speed == 0) {
             if (drop_flag) {
@@ -451,7 +455,24 @@ void game() {
             } else {
                 first_bomb_delay --;
             }
+        }
 
+        // UFO Logic
+        if (ufo_active) {
+            ufo_x --;
+            vdp_setSpritePosition(UFO, ufo_x, 8);
+            if (ufo_x == 0) {
+                vdp_disableSprite(UFO);
+                ufo_active = false;
+            }
+        } else {
+            if(first_bomb_delay == 0) {
+                if(rand() % 100 < 2) {  //2 % chance of spawning a UFO every frame.
+                    ufo_x = 240;
+                    vdp_spriteInit(UFO, UFO_SPRITE, 8, ufo_x, 6);
+                    ufo_active = true;
+                }
+            }
         }
 
         vdp_waitVDPReadyInt();
@@ -559,6 +580,10 @@ void main() {
     __asm
         di
         rst 0x00
+    __endasm;
+    #else
+    __asm
+        jp 0
     __endasm;
     #endif
 }

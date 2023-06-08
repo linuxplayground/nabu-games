@@ -89,7 +89,7 @@ bool menu() {
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.4",4);
+    centerText("SNAKE - V3.5",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("JOYSTICK ONLY",8);
     centerText("BTN TO PLAY AGAIN",11);
@@ -385,6 +385,10 @@ void main(void) {
     __asm
         di
         rst 0x00
+    __endasm;
+    #else
+    __asm
+        jp 0
     __endasm;
     #endif
 }
