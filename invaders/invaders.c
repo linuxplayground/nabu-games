@@ -217,11 +217,13 @@ bool bullet_hit_detection() {
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, (invaders[i][j].px * 2) - 4 , bullety-8, tc);
                         explode_active = EXPLODE_FRAMES;
                         //boom
-                        ayWrite(AY_CHC_AMPL, 0x10);
-                        ayWrite(AY_NOISE_GEN, 0x1F);
-                        ayWrite(AY_ENV_PERIOD_L, 0x00);
-                        ayWrite(AY_ENV_PERIOD_H, 0x0F);
-                        ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+                        if(!ufo_active) {
+                            ayWrite(AY_CHC_AMPL, 0x10);
+                            ayWrite(AY_NOISE_GEN, 0x1F);
+                            ayWrite(AY_ENV_PERIOD_L, 0x00);
+                            ayWrite(AY_ENV_PERIOD_H, 0x0F);
+                            ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+                        }
 
                         game_speed = 2 + (max_invaders/8);
                         return true;
@@ -318,7 +320,7 @@ void new_game() {
     }
     alien_note_index = 0;
     beat_counter = 4;
-    fire_count_index = 0;
+    fire_count_index = 22;
     ufo_active = false;
 }
 
@@ -363,10 +365,27 @@ void game() {
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
                 // pew
-                playNoteDelay(0,60,4);
+                if(!ufo_active) {
+                    playNoteDelay(0,60,8);
+                }
+
                 fire_count_index --;
                 if (fire_count_index == 0) {
                     fire_count_index = 15;
+                    // we launch a UFO every 16 bullets fired.
+                    if(first_bomb_delay == 0) {
+                        ufo_x = 240;
+                        vdp_spriteInit(UFO, UFO_SPRITE, 8, ufo_x, 6);
+                        ufo_active = true;
+                        // Turn on UFO siren
+                        ayWrite(AY_CHB_AMPL, 0x1F);
+                        ayWrite(AY_NOISE_GEN, 0x00);
+                        ayWrite(AY_CHB_TONE_H, 0x00);
+                        ayWrite(AY_CHB_TONE_L, 0x20);
+                        ayWrite(AY_ENV_PERIOD_L, 0xff);
+                        ayWrite(AY_ENV_PERIOD_H, 0x02);
+                        ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_TRIANGLE);
+                    }
                 }
             }
         }
@@ -378,21 +397,50 @@ void game() {
                 num_rows = ((bottom_row - top_row) / 2) + 1;
             }
             draw_aliens();
-            beat_counter --;
-            if (beat_counter == 0 ) {
-                alien_note_index ++;
-                if (alien_note_index > 3)
-                    alien_note_index = 0;
-                ayWrite(AY_CHB_AMPL, 0x0F);
-                playNoteDelay(1, alien_notes[alien_note_index], 6);
-                beat_counter = 4;
+            if (!ufo_active) {
+                // We only play the march when the UFO is not there.
+                beat_counter --;
+                if (beat_counter == 0 ) {
+                    alien_note_index ++;
+                    if (alien_note_index > 3)
+                        alien_note_index = 0;
+                    ayWrite(AY_CHB_AMPL, 0x0F);
+                    playNoteDelay(1, alien_notes[alien_note_index], 6);
+                    beat_counter = 4;
+                }
             }
             ticks = 0;
         }
 
         // Bullet logic
         if (bullet_active) {
-            if (bullety > 16) {
+            if (ufo_active) {
+                if ((vdpStatusRegVal & 0b00100000)>0 && bullety < 24) {
+                    score = score + ufo_scores[fire_count_index];
+                    ufo_active = false;
+                    vdp_disableSprite(UFO);
+                    vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, ufo_x+8 , bullety-4, 6);
+                    explode_active = EXPLODE_FRAMES;
+                    //boom
+                    ayWrite(AY_CHC_AMPL, 0x10);
+                    ayWrite(AY_NOISE_GEN, 0x1F);
+                    ayWrite(AY_ENV_PERIOD_L, 0x00);
+                    ayWrite(AY_ENV_PERIOD_H, 0x0F);
+                    ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_FADE_OUT);
+
+                    vdp_disableSprite(BULLET);
+                    bullet_active = false;
+                    
+                    sprintf(tb, "%06d", score);
+                    printAtLocationBuf(26, 0, tb);
+                    if (score > high_score) {
+                        high_score = score;
+                        sprintf(tb, "%06d", high_score);
+                        printAtLocationBuf(12, 0, tb);
+                    }
+                }
+            }
+            if (bullety > 8) {
                 if (bullet_hit_detection()) {
                     vdp_disableSprite(BULLET);
                     bullet_active = false;
@@ -431,17 +479,18 @@ void game() {
                 if (bomby > 176) {
                     if( bombx > playerx && bombx < playerx + 16 ) {
                         vdp_disableSprite(PLAYER);
+                        vdp_disableSprite(UFO);
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, playerx, 176, 15);
                         running = false;
                         // From snake. - Disaster!
-                        ayWrite(6,  0x0f); //Noise Period
-                        ayWrite(7,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
-                        ayWrite(8,  0x10); //amplitude controlled by envelope
-                        ayWrite(9,  0x10); //amplitude controlled by envelope
-                        ayWrite(10, 0x10); //amplitude controlled by envelope
-                        ayWrite(11, 0xa0); //Envelope period fine
-                        ayWrite(12, 0x40); //Envelope period course
-                        ayWrite(13, 0x00); //Envelope shape
+                        ayWrite(AY_NOISE_GEN,  0x0f); //Noise Period
+                        ayWrite(AY_ENABLES,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
+                        ayWrite(AY_CHA_AMPL,  0x10); //amplitude controlled by envelope
+                        ayWrite(AY_CHB_AMPL,  0x10); //amplitude controlled by envelope
+                        ayWrite(AY_CHC_AMPL, 0x10); //amplitude controlled by envelope
+                        ayWrite(AY_ENV_PERIOD_L, 0xa0); //Envelope period fine
+                        ayWrite(AY_ENV_PERIOD_H, 0x40); //Envelope period course
+                        ayWrite(AY_ENV_SHAPE, 0x00); //Envelope shape
                         level_up = false;
                     }
                 }
@@ -464,14 +513,6 @@ void game() {
             if (ufo_x == 0) {
                 vdp_disableSprite(UFO);
                 ufo_active = false;
-            }
-        } else {
-            if(first_bomb_delay == 0) {
-                if(rand() % 100 < 2) {  //2 % chance of spawning a UFO every frame.
-                    ufo_x = 240;
-                    vdp_spriteInit(UFO, UFO_SPRITE, 8, ufo_x, 6);
-                    ufo_active = true;
-                }
             }
         }
 

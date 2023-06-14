@@ -29,6 +29,7 @@
 #define AY_ENV_SHAPE_ATTACK    0x04
 #define AY_ENV_SHAPE_ALTERNATE 0x02
 #define AY_ENV_SHAPE_HOLD      0x01
+#define AY_ENV_SHAPE_OFF       0x00
 
 //  /\  /\  /\  /\  /\ 
 // /  \/  \/  \/  \/  
