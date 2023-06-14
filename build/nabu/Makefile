@@ -24,8 +24,17 @@ c.dsk:: $(ALL_DIRS)
 	cpmcp -f $(DISKDEF) $@ */*.com 0:
 	cpmls -f $(DISKDEF) $@
 
+NDSK_B.img:: $(ALL_DIRS)
+	rm -f $@
+	LC_CTYPE=C tr '\0' '\345' < /dev/zero | dd of=$@ bs=8M count=1 conv=fsync iflag=fullblock
+	cpmcp -f nshd8 $@ */*.com 0:
+	cpmls -f nshd8 $@
+
 store: c.dsk
 	cp $^ $(STOREDIR)
+
+ishkur: NDSK_B.img
+	cp $^ $(ISHKURDIR)
 
 clean::
 	rm -f c.dsk

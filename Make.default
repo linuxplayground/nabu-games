@@ -6,5 +6,6 @@ Z88DIR = $(TOP)/../z88dk
 CFLAGS = +cpm -DBIN_TYPE=BIN_CPM --list -compiler=sdcc -create-app -O3 --opt-code-speed
 
 STOREDIR = "/override/this/in/Make.local"
+ISHKURDIR = "/override/this/in/Make.local"
 
 MKDIR = mkdir -pv
