@@ -659,6 +659,7 @@ void main() {
         if (menu()) {
             delay(60);
             new_game();
+            display_lives();
             game();
             game_speed = DEFAULT_GAME_SPEED;
         } else {
