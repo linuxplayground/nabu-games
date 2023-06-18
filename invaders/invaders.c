@@ -555,7 +555,7 @@ void game() {
             if(first_bomb_delay == 0) {
                 // select an invader to drop the bomb
                 select_bombing_invader(); //Sets bombx and bomby - because global variables for the win!
-                vdp_spriteInit(BOMB, BOMB_SPRITE, bombx, bomby, 6);
+                vdp_spriteInit(BOMB, BOMB_SPRITE, bombx, bomby, 11);
                 bomb_active = true;
             } else {
                 first_bomb_delay --;
