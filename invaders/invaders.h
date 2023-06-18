@@ -329,6 +329,7 @@ uint16_t score;
 uint16_t high_score;
 bool play_again;
 bool level_up;
+uint8_t level;
 uint8_t alien_note_index;
 uint8_t alien_notes[4] = {10, 9, 7, 5};
 uint8_t beat_counter;
@@ -338,4 +339,5 @@ uint16_t ufo_scores[16] = {100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 1
 uint8_t ufo_active;
 uint8_t ufo_x;
 
+uint8_t godMode;
 char tb[6] = { 0 };

@@ -150,8 +150,6 @@ void drop_aliens() {
         for(uint8_t j=0; j<32; j++) {
             vdp_setCharAtLocationBuf(j, top_row + i*2, 0);
         }
-        // uint8_t temp_x = 0;
-        // num_cols = 0;
         for (uint8_t j=0; j<11; j++) {
             invaders[i][j].ty ++;
             if (invaders[i][j].ty > 22) {
@@ -317,6 +315,13 @@ void new_game() {
     explode_active = 0;
     if( !level_up) {
         score = 0;
+        // godMode = false;
+        level = 0;
+    } else {
+        level ++;
+        for(uint8_t z = 0; z<level; z++) {
+            drop_aliens();
+        }
     }
     alien_note_index = 0;
     beat_counter = 4;
@@ -339,7 +344,11 @@ void game() {
 
         // Check player input.
         if (isKeyPressed()) {
-            running = false;
+            // if (getChar() == 0x20) {
+            //     godMode = true;
+            // } else {
+                running = false;
+            // }
         }
         // Left
         if (getJoyStatus(0) & Joy_Left) {
@@ -475,6 +484,7 @@ void game() {
                 vdp_disableSprite(BOMB);
                 bomb_active = false;
             }
+            //if ((vdpStatusRegVal & 0b00100000)>0 && !godMode) {
             if ((vdpStatusRegVal & 0b00100000)>0) {
                 if (bomby > 176) {
                     if( bombx > playerx && bombx < playerx + 16 ) {
@@ -602,13 +612,6 @@ void main() {
             new_game();
             game();
             game_speed = DEFAULT_GAME_SPEED;
-            // if (level_up) {
-            //     if(game_speed > 2)
-            //         game_speed -= 2;
-            // } else {
-            //     game_speed = DEFAULT_GAME_SPEED;
-            //     level_up = false;
-            // };
         } else {
             play_again = false;
         };
@@ -616,6 +619,7 @@ void main() {
     }
     
     vdp_disableVDPReadyInt();
+    initNABULIBAudio(); //Make sure to reset audio.
 
     #if BIN_TYPE == BIN_HOMEBREW
     __asm
