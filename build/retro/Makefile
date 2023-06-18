@@ -56,5 +56,5 @@ clean::
 
 release: $(ALL_DIRS)
 	@if [ -e $(GIT_TAG) ]; then echo "\n\n** ERROR: you have not tagged this commit!\n\n"; exit 1; fi
-	tar -c -z -v -f  nabu-games-z80retro-$(GIT_TAG).tgz snake/SNAKE.COM tetris/TETRIS.COM 
-	zip  -r -v  nabu-games-z80retro-$(GIT_TAG).zip snake/SNAKE.COM tetris/TETRIS.COM
+	tar -c -z -v -f  nabu-games-z80retro-$(GIT_TAG).tgz snake/SNAKE.COM tetris/TETRIS.COM invaders/INVADERS.COM
+	zip  -r -v  nabu-games-z80retro-$(GIT_TAG).zip snake/SNAKE.COM tetris/TETRIS.COM invaders/INVADERS.COM
