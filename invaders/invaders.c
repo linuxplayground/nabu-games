@@ -72,7 +72,7 @@ void initDisplay() {
 
     vdp_enableVDPReadyInt();
 
-    vdp_loadPatternTable(patterns, 0x3C0);
+    vdp_loadPatternTable(patterns, 0x3C8);
 
     //Load same colour into every colour table cell.
     vdp_setPatternColor(0xe1);
@@ -97,13 +97,20 @@ void draw_sheilds() {
     for (uint8_t i=0; i<32; i++) {
         vdp_setCharAtLocationBuf(i,1,0x13);
     }
-    printAtLocationBuf(19, 0, "SCORE:");
+    printAtLocationBuf(0, 0, "SCORE:");
     sprintf(tb, "%06d", score);
-    printAtLocationBuf(26, 0, tb);
+    printAtLocationBuf(7, 0, tb);
 
-    printAtLocationBuf(0, 0, "HIGH SCORE:");
+    printAtLocationBuf(14, 0, "HIGH:");
     sprintf(tb, "%06d", high_score);
-    printAtLocationBuf(12, 0, tb);
+    printAtLocationBuf(20, 0, tb);
+}
+
+void display_lives() {
+    printAtLocationBuf(27,0,"     ");
+    for (uint8_t i=lives; i>0; i--) {
+        vdp_setCharAtLocationBuf(32-i, 0, 0x78);
+    }
 }
 
 void draw_aliens() {
@@ -130,7 +137,7 @@ void draw_aliens() {
                     new_dir = -1;
                     drop_flag = 1;
                 }
-                
+
                 if (tx < 1) {
                     new_dir = 1;
                     drop_flag = 1;
@@ -211,6 +218,11 @@ bool bullet_hit_detection() {
                         else {
                             tc = 3;
                             score = score + 45;
+                        }
+                        if(!extra_life_given && score >= 1500) {
+                            lives ++;
+                            extra_life_given = true;
+                            display_lives();
                         }
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, (invaders[i][j].px * 2) - 4 , bullety-8, tc);
                         explode_active = EXPLODE_FRAMES;
@@ -317,6 +329,8 @@ void new_game() {
         score = 0;
         // godMode = false;
         level = 0;
+        lives = 3;
+        display_lives();
     } else {
         level ++;
         for(uint8_t z = 0; z<level; z++) {
@@ -426,6 +440,11 @@ void game() {
             if (ufo_active) {
                 if ((vdpStatusRegVal & 0b00100000)>0 && bullety < 24) {
                     score = score + ufo_scores[fire_count_index];
+                    if(!extra_life_given && score >= 1500) {
+                        lives ++;
+                        extra_life_given = true;
+                        display_lives();
+                    }
                     ufo_active = false;
                     vdp_disableSprite(UFO);
                     vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, ufo_x+8 , bullety-4, 6);
@@ -439,13 +458,13 @@ void game() {
 
                     vdp_disableSprite(BULLET);
                     bullet_active = false;
-                    
+
                     sprintf(tb, "%06d", score);
-                    printAtLocationBuf(26, 0, tb);
+                    printAtLocationBuf(7, 0, tb);
                     if (score > high_score) {
                         high_score = score;
                         sprintf(tb, "%06d", high_score);
-                        printAtLocationBuf(12, 0, tb);
+                        printAtLocationBuf(20, 0, tb);
                     }
                 }
             }
@@ -455,11 +474,11 @@ void game() {
                     bullet_active = false;
 
                     sprintf(tb, "%06d", score);
-                    printAtLocationBuf(26, 0, tb);
+                    printAtLocationBuf(7, 0, tb);
                     if (score > high_score) {
                         high_score = score;
                         sprintf(tb, "%06d", high_score);
-                        printAtLocationBuf(12, 0, tb);
+                        printAtLocationBuf(20, 0, tb);
                     }
 
                 } else {
@@ -491,7 +510,6 @@ void game() {
                         vdp_disableSprite(PLAYER);
                         vdp_disableSprite(UFO);
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, playerx, 176, 15);
-                        running = false;
                         // From snake. - Disaster!
                         ayWrite(AY_NOISE_GEN,  0x0f); //Noise Period
                         ayWrite(AY_ENABLES,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
@@ -501,7 +519,35 @@ void game() {
                         ayWrite(AY_ENV_PERIOD_L, 0xa0); //Envelope period fine
                         ayWrite(AY_ENV_PERIOD_H, 0x40); //Envelope period course
                         ayWrite(AY_ENV_SHAPE, 0x00); //Envelope shape
-                        level_up = false;
+
+                        // Deal with new life.
+                        lives --;
+                        if (lives < 1) {
+                            running = false;
+                            level_up = false;
+                        } else {
+
+                            display_lives();
+                            delay(60);   // Allow explosion and crash sound to end
+                            vdp_disableSprite(EXPLODE);
+                            vdp_disableSprite(BOMB);
+                            bomb_active = false;
+                            vdp_disableSprite(BULLET);
+                            bullet_active = false;
+                            vdp_disableSprite(UFO);
+                            ufo_active = false;
+
+                            // We need to recenter the player and blink it 5 times.
+                            playerx = 120;
+                            vdp_spriteInit(PLAYER, PLAYER_SPRITE, 120, 176, 15);
+                            for(uint8_t i=0; i<5; i++) {
+                                vdp_disableSprite(PLAYER);
+                                delay(15);
+                                vdp_spriteInit(PLAYER, PLAYER_SPRITE, 120, 176, 15);
+                                delay(15);
+                            }
+                            ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A
+                        }
                     }
                 }
             }
@@ -562,14 +608,15 @@ bool menu() {
 
     if (level_up == false) {
         centerText("JOYSTICK ONLY",8);
+        centerText("GAME OVER",10);
         centerText("BTN TO PLAY AGAIN",11);
     } else {
-        centerText("BTN TO PLAY NEXT LEVEL",11);
+        centerText("BTN TO PLAY NEXT LEVEL",9);
     }
 
     centerText("INVADERS - V3.5",4);
     centerText("BY PRODUCTIONDAVE",5);
-    
+
     high_score = getHighScore();
     centerText("SCORE:     ",13);
     sprintf(tb, "%06d", score);
@@ -584,7 +631,7 @@ bool menu() {
     vdp_waitVDPReadyInt();
     tmp = IO_VDPLATCH;  //dummy read
     vdp_waitVDPReadyInt();
-    vdp_refreshViewPort(); 
+    vdp_refreshViewPort();
 
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {
@@ -606,6 +653,8 @@ void main() {
     level_up = false;
     game_speed = DEFAULT_GAME_SPEED;
     score = 0;
+    extra_life_given = false;
+
     while (play_again) {
         if (menu()) {
             delay(60);
@@ -617,7 +666,7 @@ void main() {
         };
         setHighScore(high_score);
     }
-    
+
     vdp_disableVDPReadyInt();
     initNABULIBAudio(); //Make sure to reset audio.
 
