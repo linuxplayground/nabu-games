@@ -13,5 +13,8 @@ SD_DEV=/dev/sda1
 # This is used before burning an SD card image to make sure we are on the correct host!
 SD_HOSTNAME=raspberrypi
 
+# The latest released tag used to download binaries in g.img recipe
+TAG_NAME := $(shell git describe --abbrev=0 --tags $(git rev-list --tags --max-count=1))
+
 -include $(TOP)/Make.local
 include $(TOP)/Make.rules

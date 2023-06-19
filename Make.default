@@ -9,3 +9,5 @@ STOREDIR = "/override/this/in/Make.local"
 ISHKURDIR = "/override/this/in/Make.local"
 
 MKDIR = mkdir -pv
+
+DISK_SLOT = 7
