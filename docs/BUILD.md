@@ -56,7 +56,7 @@ You will find a `drive.img` which you can write on to your SD Card in `build/ret
 
 At this point you can go ahead and use the makefile rules in `build/retro` to burn to your SD Drive.  Just make sure you have the appropriate overrides configured in `Make.local`.  For more inforamtion checkout John Winan's YouTube video: [https://www.youtube.com/watch?v=H4XypSs2wRA](https://www.youtube.com/watch?v=H4XypSs2wRA)  Again - for more detailed instructions of the Makefile in `build/retro` see: [RETRO.md](./RETRO.md)
 
-## Download the Pre-Compiled Binaries
+## Z80-Retro - Download the Pre-Compiled Binaries
 
 If you don't want to combile the sources but would rather just download the 
 pre-compiled binaries, you can do the following steps:
