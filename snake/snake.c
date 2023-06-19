@@ -4,23 +4,11 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "nabu-games-patterns.h"
+#include "nabu-games.h"
 #include <strings.h>
 #include "snake.h"
 
 FILE * fp;
-
-void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
-    uint16_t offset = y * _vdpCursorMaxXFull + x;
-    uint8_t *start = text;
-
-    while (*start != 0x00) {
-
-      _vdp_textBuffer[offset] = *start;
-      offset++;
-      start++;
-    }
-}
 
 /* Fetch the high score from disk*/
 uint16_t getHighScore() {
@@ -51,10 +39,6 @@ void setHighScore(uint16_t hs) {
     #endif
 }
 
-/* Write some text on the screen centered and at y location.*/
-void centerText(char *text, uint8_t y) {
-    printAtLocationBuf(abs(15-(strlen(text)/2)),y,text);
-}
 
 /* Set up the graphics, audio and vdp interrupts.*/
 void init() {
@@ -205,14 +189,6 @@ void setup_game() {
     game_speed = 10;
     crashed = false;
     setup_level();
-}
-
-/* Delay routine synced to the VDP interrupts (1 frame = 1/60 seconds)*/
-void delay(uint8_t frames) {
-    while (frames > 0) {
-        vdp_waitVDPReadyInt();
-        frames --;
-    }
 }
 
 void game() {

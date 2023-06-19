@@ -1,3 +1,15 @@
+//Set all values in the color table to color.
+void vdp_setPatternColor(uint8_t color) {
+    vdp_setWriteAddress(_vdpColorTableAddr);
+    for (uint16_t i = 0; i < 0x1800; i++) {
+        IO_VDPDATA = color;
+        nop();
+        nop();
+        nop();
+        nop();
+    }
+}
+
 void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
     uint16_t offset = y * _vdpCursorMaxXFull + x;
     uint8_t *start = text;
@@ -21,15 +33,3 @@ void delay(uint8_t frames) {
     }
 }
 
-void init() {
-    initNABULib();
-    vdp_clearVRAM();
-    vdp_initG2Mode(1, false, false, false, false);
-    vdp_loadPatternTable(FAT,0x400);
-    uint16_t _vdpColorTableAddr = 0x2000;
-    uint16_t _vdpColorTableSize = 0x1800;
-    vdp_setPatternColor(0x41);
-    vdp_setBackDropColor(VDP_DARK_YELLOW);                         //Set border color
-    initNABULIBAudio();
-    vdp_enableVDPReadyInt();
-}

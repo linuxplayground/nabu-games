@@ -4,7 +4,7 @@
 
 #include "NABU-LIB.h"
 #include "NabuTracker.h"
-#include "nabu-games-patterns.h"
+#include "nabu-games.h"
 #include "tetris-nt.h"
 #include "tetris.h"
 
@@ -52,18 +52,6 @@ void initDisplay() {
     vdp_colorizePattern(0x16, VDP_MAGENTA, VDP_BLACK);
     
     vdp_setBackDropColor(VDP_DARK_YELLOW);          //Set border color
-}
-
-void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
-    uint16_t offset = y * _vdpCursorMaxXFull + x;
-    uint8_t *start = text;
-
-    while (*start != 0x00) {
-
-      _vdp_textBuffer[offset] = *start;
-      offset++;
-      start++;
-    }
 }
 
 void setupMap() {

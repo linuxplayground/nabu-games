@@ -2,9 +2,11 @@
 #define NABUGAMESLIB
 
 #include <strings.h>
+#include "nabu-games-patterns.h"
 
-/* Set up Graphics mode 2 and nabu games yellow border, blue text */
-void init();
+/* Extra function needed but not found in upstream nabu-lib*/
+void vdp_setPatternColor(uint8_t color);
+
 /* Print text into the frame buffer at location x, y */
 void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text);
 

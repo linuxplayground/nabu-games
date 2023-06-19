@@ -5,7 +5,7 @@
 #include "NABU-LIB.h"
 #include "invaders.h"
 #include "string.h"
-#include "nabu-games-patterns.h"
+#include "nabu-games.h"
 #include "audio.h"
 
 uint16_t getHighScore() {
@@ -39,30 +39,6 @@ void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
     for (uint8_t i=0; i<count*8; i++) {
         IO_VDPDATA = color;
     }
-}
-
-/* Delay routine synced to the VDP interrupts (1 frame = 1/60 seconds)*/
-void delay(uint8_t frames) {
-    while (frames > 0) {
-        vdp_waitVDPReadyInt();
-        frames --;
-    }
-}
-
-void printAtLocationBuf(uint8_t x, uint8_t y, uint8_t *text) {
-    uint16_t offset = y * _vdpCursorMaxXFull + x;
-    uint8_t *start = text;
-
-    while (*start != 0x00) {
-      _vdp_textBuffer[offset] = *start;
-      offset++;
-      start++;
-    }
-}
-
-/* Write some text on the screen centered and at y location.*/
-void centerText(char *text, uint8_t y) {
-    printAtLocationBuf(abs(15-(strlen(text)/2)),y,text);
 }
 
 void initDisplay() {
