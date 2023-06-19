@@ -33,9 +33,9 @@ As you can see in the above directory listing, the NABU-LIB, z80retro-lib and z8
 
 ## Building
 
-The make files are designed to be run on Linux.  They are tested to run on Ubuntu and Windows Subsystem For Linux. (WSL2).
+The make files are designed to be run on Linux.  They are tested to run on Ubuntu and Windows Subsystem For Linux (WSL2) and on a Raspberry Pi.
 
-Execute the `make` command from the root of this project or from the build directory.  As you descend into the build directory, exections of Make will produce only the items from where you are and below.
+Execute the `make` command from the root of this project or from the build directory.  As you descend into the build directory, executions of Make will produce only the items from where you are and below.
 
 For example, to build everything:
 
@@ -46,10 +46,12 @@ make world
 
 This will delete all the binary objects, disk images and other artifacts from within the build directory structure and compile everything from scratch.
 
-You will find a `drive.img` which you can write on to your SD Card in `build/retro/drive.img`.  See: [RETRO.md](RETRO.md) for details.
+All the binary outputs will be in the relevant `build/` subfolders.
 
-At this point you can go ahead and use the makefile rules in `build/retro` to burn to your SD Drive.  Just make sure you have the appropriate overrides configured in `Make.local`.  For more inforamtion checkout John Winan's YouTube video: [https://www.youtube.com/watch?v=H4XypSs2wRA](https://www.youtube.com/watch?v=H4XypSs2wRA)
+### Nabu Build Resources
+For you Nabuers. the varous .nabu and .COM files along with a c.dsk for use with the nabu.ca Internet Adapter will be written out to the `build/nabu` folders.  There is a detailed description here: [NABU.md](./NABU.md)
 
-For you Nabuers. the varous .nabu and .COM files along with a c.dsk for use with the nabu.ca Internet Adapter will be written out to the `build/nabu` folders.
+### Z80-Retro! Build Resources
+You will find a `drive.img` which you can write on to your SD Card in `build/retro/drive.img`.  See: [RETRO.md](./RETRO.md) for details.
 
-Best of luck!
+At this point you can go ahead and use the makefile rules in `build/retro` to burn to your SD Drive.  Just make sure you have the appropriate overrides configured in `Make.local`.  For more inforamtion checkout John Winan's YouTube video: [https://www.youtube.com/watch?v=H4XypSs2wRA](https://www.youtube.com/watch?v=H4XypSs2wRA)  Again - for more detailed instructions of the Makefile in `build/retro` see: [RETRO.md](./RETRO.md)

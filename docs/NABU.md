@@ -44,4 +44,4 @@ cp c.dsk "/mnt/c/dev/nabu/Nabu Internet Adapter/Store/"
 
 In the above listing, you can see how am 8mb disk image is created using `dd` and filled up with `e5` data which is required by CP/M.  It then copies the COM files to it using cpmtools and finally copies the c.dsk image file over to the configured internet adapter Store folder.
 
-Once this step is complete, you should be able to navigate to drive C user area 0 and do a directory listing with `dir`.  To play the games just type `snake` or `tetris`
+Once this step is complete, you should be able to navigate to drive C user area 0 and do a directory listing with `dir`.  To play the games just type `invaders`, `snake` or `tetris`
