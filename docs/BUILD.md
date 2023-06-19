@@ -55,3 +55,21 @@ For you Nabuers. the varous .nabu and .COM files along with a c.dsk for use with
 You will find a `drive.img` which you can write on to your SD Card in `build/retro/drive.img`.  See: [RETRO.md](./RETRO.md) for details.
 
 At this point you can go ahead and use the makefile rules in `build/retro` to burn to your SD Drive.  Just make sure you have the appropriate overrides configured in `Make.local`.  For more inforamtion checkout John Winan's YouTube video: [https://www.youtube.com/watch?v=H4XypSs2wRA](https://www.youtube.com/watch?v=H4XypSs2wRA)  Again - for more detailed instructions of the Makefile in `build/retro` see: [RETRO.md](./RETRO.md)
+
+## Download the Pre-Compiled Binaries
+
+If you don't want to combile the sources but would rather just download the 
+pre-compiled binaries, you can do the following steps:
+
+1. Make sure you `Make.local` has the correct overrides for `SD_HOSTNAME` and 
+    `SD_DEV`
+2. cd into the `bulid/retro` directory.
+3. `make g.img`
+4. `make g_burn`
+
+This will download the latest binaries published on the nabu-games github releases
+extract them, make a g.img disk image and burn it into SLOT 7 of your SD Card.
+
+Of course this all will only work on your retro if you are running the version
+of the ROM and Filesystem that supports multiple dives.  Currently the `dev` branch
+of https://github.com/Z80-Retro/2063-Z80-cpm

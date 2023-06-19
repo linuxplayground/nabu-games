@@ -11,3 +11,8 @@ ISHKURDIR = "/override/this/in/Make.local"
 MKDIR = mkdir -pv
 
 DISK_SLOT = 7
+# For normal use on a plain Raspberry PI
+SD_DEV=/dev/sda1
+
+# This is used before burning an SD card image to make sure we are on the correct host!
+SD_HOSTNAME=raspberrypi

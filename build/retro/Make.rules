@@ -7,12 +7,6 @@ CPPFLAGS+=-I$(TARGET_LIB_DIR)
 
 DISKDEF=z80-retro-8k-8m
 
-# For normal use on a plain Raspberry PI
-SD_DEV=/dev/sda1
-
-# This is used before burning an SD card image to make sure we are on the correct host!
-SD_HOSTNAME=raspberrypi
-
 # The latest released tag used to download binaries in g.img recipe
 TAG_NAME := $(shell git describe --abbrev=0 --tags $(git rev-list --tags --max-count=1))
 
