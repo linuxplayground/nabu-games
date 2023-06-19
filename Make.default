@@ -10,7 +10,9 @@ ISHKURDIR = "/override/this/in/Make.local"
 
 MKDIR = mkdir -pv
 
-DISK_SLOT = 7
+# G Drive is Slot 6.
+DISK_SLOT = 6
+
 # For normal use on a plain Raspberry PI
 SD_DEV=/dev/sda1
 
