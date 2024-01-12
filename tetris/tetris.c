@@ -12,7 +12,7 @@ uint8_t tb[64];
 uint8_t tb8[4];
 uint8_t tb16[6];
 
-void initDisplay() {
+void initDisplay(void) {
     initNABULib();
     nt_init(music);
     vdp_clearVRAM();
@@ -54,7 +54,7 @@ void initDisplay() {
     vdp_setBackDropColor(VDP_DARK_YELLOW);          //Set border color
 }
 
-void setupMap() {
+void setupMap(void) {
     //plot the map graphics
     uint8_t col = 7;
     uint8_t line = 0;
@@ -121,7 +121,7 @@ bool isSpaceFree(uint8_t x, uint8_t y, uint8_t tet_index, uint8_t frame) {
     return true;
 }
 
-void clearPlayArea() {
+void clearPlayArea(void) {
     for( uint8_t i = 1; i<23; i++) {
         for( uint8_t j = 8; j < 18; j ++ ) {
             vdp_setCharAtLocationBuf(j, i, 0x20);
@@ -167,7 +167,7 @@ uint8_t checkCompletedLines(uint8_t *lines) __z88dk_fastcall {
     return completed_lines;
 }
 
-int new_block() {
+int new_block(void) {
     //Reset used blocks if we hav
     if (block_count == 7) {
         for(uint8_t i=0; i<7; i++) {
@@ -186,7 +186,7 @@ int new_block() {
     return t;
 }
 
-uint16_t getHighScore() {
+uint16_t getHighScore(void) {
     uint16_t hs;
     #if BIN_TYPE == BIN_CPM
         FILE * fp = fopen("tetris.dat", "r");
@@ -212,7 +212,7 @@ void setHighScore(uint16_t hs) __z88dk_fastcall {
     #endif
 }
 
-void play() {
+void play(void) {
     uint8_t t = new_block();
     uint8_t n;
     int8_t f;
@@ -459,7 +459,7 @@ void play() {
     setHighScore(high_score);
 }
 
-bool menu() {
+bool menu(void) {
     clearPlayArea();
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
@@ -494,7 +494,7 @@ bool menu() {
     }
 }
 
-void main() {
+void main(void) {
     initDisplay();
     high_score = getHighScore();
     setupMap();

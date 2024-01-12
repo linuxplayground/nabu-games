@@ -11,7 +11,7 @@
 FILE * fp;
 
 /* Fetch the high score from disk*/
-uint16_t getHighScore() {
+uint16_t getHighScore(void) {
     int hs;
     #if BIN_TYPE == BIN_CPM
         fp = fopen("snake.dat", "r");
@@ -41,7 +41,7 @@ void setHighScore(uint16_t hs) {
 
 
 /* Set up the graphics, audio and vdp interrupts.*/
-void init() {
+void init(void) {
     initNABULib();
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false, false);
@@ -65,7 +65,7 @@ void init() {
 }
 
 /* Display the menu and then wait for the user to either exit (false) or continue (true)*/
-bool menu() {
+bool menu(void) {
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
     vdp_clearScreen();
@@ -99,7 +99,7 @@ bool menu() {
 }
 
 /* Locate a new apple on the screen without it overlapping anything already there.*/
-void new_apple() {
+void new_apple(void) {
     bool taken = true;
     while(taken) {
         uint8_t x = rand() % 32;
@@ -154,14 +154,14 @@ void drawLevel(uint8_t *level, uint8_t len) {
 }
 
 /*Empty out the text frame buffer.*/
-void clearTextBuffer() {
+void clearTextBuffer(void) {
     for(uint16_t i=0; i<0x300; i++) {
         _vdp_textBuffer[i] = 0x00;
     }
 }
 
 /* Sets up a new level */
-void setup_level() {
+void setup_level(void) {
     clearTextBuffer();
     //Reset snake length and circ buffer
     head.x = 15;
@@ -181,7 +181,7 @@ void setup_level() {
 }
 
 /* Sets up a new game. */
-void setup_game() {
+void setup_game(void) {
     clearTextBuffer();
     initNABULIBAudio(); // reset to regular music mode
     score = 0;
@@ -191,7 +191,7 @@ void setup_game() {
     setup_level();
 }
 
-void game() {
+void game(void) {
     uint8_t apples_eaten = 0;
     while(!crashed) {
         if (pause) {

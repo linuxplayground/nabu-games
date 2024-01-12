@@ -8,7 +8,7 @@
 #include "NABU-LIB.h"
 #include "patterns.h"
 
-void init() {
+void init(void) {
 
   initNABULib();
   vdp_clearVRAM();

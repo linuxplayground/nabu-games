@@ -8,7 +8,7 @@
 #include "nabu-games.h"
 #include "audio.h"
 
-uint16_t getHighScore() {
+uint16_t getHighScore(void) {
     uint16_t hs;
     #if BIN_TYPE == BIN_CPM
         FILE * fp = fopen("invaders.dat", "r");
@@ -41,7 +41,7 @@ void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
     }
 }
 
-void initDisplay() {
+void initDisplay(void) {
     initNABULib();
     vdp_clearVRAM();
     vdp_initG2Mode(1, true, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
@@ -65,7 +65,7 @@ void initDisplay() {
 
 }
 
-void draw_sheilds() {
+void draw_sheilds(void) {
     for (uint8_t i=0; i<21; i++) {
         vdp_setCharAtLocationBuf(i+5, 20, shield_layout[0][i]);
         vdp_setCharAtLocationBuf(i+5, 21, shield_layout[1][i]);
@@ -82,14 +82,14 @@ void draw_sheilds() {
     printAtLocationBuf(20, 0, tb);
 }
 
-void display_lives() {
+void display_lives(void) {
     printAtLocationBuf(27,0,"     ");
     for (uint8_t i=lives; i>0; i--) {
         vdp_setCharAtLocationBuf(32-i, 0, 0x78);
     }
 }
 
-void draw_aliens() {
+void draw_aliens(void) {
     uint8_t tx = 0;
     uint8_t ty = 0;
     uint8_t tp = 0;
@@ -128,7 +128,7 @@ void draw_aliens() {
     dir = new_dir;
 }
 
-void drop_aliens() {
+void drop_aliens(void) {
     for (uint8_t i=0; i<num_rows; i++) {
         for(uint8_t j=0; j<32; j++) {
             vdp_setCharAtLocationBuf(j, top_row + i*2, 0);
@@ -150,7 +150,7 @@ void drop_aliens() {
     drop_flag = 0;
 }
 
-bool bullet_hit_detection() {
+bool bullet_hit_detection(void) {
     bullet_t_x = bulletx / 8;
     bullet_t_y = bullety / 8;
     uint8_t apn =  _vdp_textBuffer[bullet_t_y * 32 + bullet_t_x]; //Alien pattern name
@@ -230,7 +230,7 @@ bool bullet_hit_detection() {
     return false;
 }
 
-bool bomb_hit_detection() {
+bool bomb_hit_detection(void) {
     bomb_t_x = bombx / 8;
     bomb_t_y = bomby / 8;
     uint8_t apn =  _vdp_textBuffer[bomb_t_y * 32 + bomb_t_x];
@@ -250,7 +250,7 @@ bool bomb_hit_detection() {
 }
 
 // Find an invader in the bottom row that will be our bomber.
-void select_bombing_invader() {
+void select_bombing_invader(void) {
     uint8_t selected = false;
     uint8_t x = 0;
     uint8_t y = 0;
@@ -265,7 +265,7 @@ void select_bombing_invader() {
     } while (!selected);
 }
 
-void new_game() {
+void new_game(void) {
 
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
@@ -320,7 +320,7 @@ void new_game() {
 }
 
 // Play a game.
-void game() {
+void game(void) {
 
     ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A
 
@@ -576,7 +576,7 @@ void game() {
 }
 
 // Display a menu
-bool menu() {
+bool menu(void) {
     ayWrite(AY_ENABLES, 0b01111111); // disable all sounds
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
@@ -623,7 +623,7 @@ bool menu() {
     }
 }
 
-void main() {
+void main(void) {
     initDisplay();
     play_again = true;
     level_up = false;

@@ -16,7 +16,7 @@ uint8_t _kbuf;
 * Store pressed key value into _kbuf;
 * return: 1 when a key was pressed, 0 when no key pressed.
 */
-uint8_t isKeyPressed() {
+uint8_t isKeyPressed(void) {
     uint8_t key = getk();
     if (key) {
         _kbuf = key;
@@ -32,7 +32,7 @@ uint8_t isKeyPressed() {
 * returns whatever is in _kbuf
 * resets _kbuf to zero.
 */
-uint8_t getChar() {
+uint8_t getChar(void) {
     uint8_t temp = _kbuf;
     _kbuf = 0;
     return temp;
