@@ -14,7 +14,7 @@ Cross compilation works because we have two different libraries for the target s
     * You must have the Z88DK located in the same folder you cloned this project into.  **OR** You must override the `Z88DIR` variable in a `Make.local` file saved here.
     * For detailed instructions on how to install Z88DK - see: https://github.com/z88dk/z88dk/wiki/installation
 2. NABU-LIB
-    * You must clone the NABU LIB Project from github (https://github.com/DJSures/NABU-LIB.git) into a folder next to where you cloned this project and z88dk.  The location of this can be overriden in: `build/nabu/Make.rules` by editing the value of `TARGET_LIB_DIR`.  For simplicity, it's recommended that you do **NOT** do this and just locate your repos in your dev environment sensibly.
+    * You must clone my fork of the NABU LIB Project from github (https://github.com/productiondave/NABU-LIB.git) into a folder next to where you cloned this project and z88dk.  The location of this can be overriden in: `build/nabu/Make.rules` by editing the value of `TARGET_LIB_DIR`.  For simplicity, it's recommended that you do **NOT** do this and just locate your repos in your dev environment sensibly.
 3. z80retro-lib
     * You must clone the z80retro-lib project from github (https://github.com/linuxplaygrouond/z80retro-lib.git) into a folder next to where you cloned this project.  The location of this can be overren in: `build/retro/Make.rules` by editing the value of `TARGET_LIB_DIR`.  For For simplicity, it's recommended that you do **NOT** do this and just locate your repos in your dev environment sensibly.
 
