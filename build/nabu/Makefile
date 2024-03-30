@@ -5,7 +5,8 @@ TOP=../..
 SUBDIRS=\
 	tetris \
 	snake \
-	invaders
+	invaders \
+	imagui
 
 .PHONY: c.dsk all store
 

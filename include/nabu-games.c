@@ -33,3 +33,31 @@ void delay(uint8_t frames) {
     }
 }
 
+void hardReset(void) {
+    __asm
+        // Disable interrupts
+        // di
+        ld a,0xf3;
+        ld (0x8880),a;
+        
+        // Enable rom shadow
+        // lda a,0x02
+        ld a,0x3e;
+        ld (0x8881),a;
+        ld a,0x02;
+        ld (0x8882),a;
+
+        // out(0x00),a
+        ld a,0xd3;
+        ld (0x8883),a;
+        ld a,0x00;
+        ld (0x8884),a;
+
+        // restart at 0x00
+        // rst 0x00
+        ld a,0xc7;
+        ld (0x8885),a;
+        
+        jp 0x8880;
+    __endasm;
+}
