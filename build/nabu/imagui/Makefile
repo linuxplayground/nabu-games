@@ -6,7 +6,7 @@ TOP=../../..
 PROGS=imagui.com
 NABUS=000001.nabu
 
-all:: $(PROGS) $(NABUS)
+all:: $(PROGS) $(NABUS) publish
 
 include ../Make.rules
 
@@ -17,6 +17,9 @@ SRC_DIR=$(TOP)/imagui
 
 000001.nabu: $(SRC_DIR)/imagui.c
 	$(ZCC) $(NABUCFLAGS) $(CPPFLAGS) -o $@ $^
+
+publish:
+	cp -f 000001.nabu "/mnt/c/dev/nabu/Nabu Internet Adapter/Local Source/hedless.nabu"
 
 world:: clean all
 
