@@ -19,7 +19,7 @@ SRC_DIR=$(TOP)/imagui
 	$(ZCC) $(NABUCFLAGS) $(CPPFLAGS) -o $@ $^
 
 publish:
-	cp -f 000001.nabu "/mnt/c/dev/nabu/Nabu Internet Adapter/Local Source/hedless.nabu"
+	cp -f 000001.nabu "/mnt/c/dev/nabu/Nabu Internet Adapter/Local Source/headless.nabu"
 
 world:: clean all
 
