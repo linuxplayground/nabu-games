@@ -12,17 +12,18 @@
 #include "imagui.h"
 
 byte i = 0;
-byte state = 1;
+byte state = 0;
 byte current_menu_id = 0;
 byte namebuf[64];
 byte authorbuf[16];
-byte descrbuf[256];
-byte newsbuf[512];
+byte tmpbuf[512];
 byte newsdate[20];
 byte parent_id = 0;
 byte channel_id = 0;
 byte prev_channel_id = 0;
 byte channel_length = 0;
+byte news_length = 0;
+byte news_id = 0;
 
 /* Set the color of all patterns */
 void vdp_setPatternColor(uint8_t color) __z88dk_fastcall {
@@ -36,10 +37,21 @@ void vdp_setPatternColor(uint8_t color) __z88dk_fastcall {
     }
 }
 
+/* utillity function to get stirng length */
+byte str_len(char *text) {
+    byte l = 0;
+    while (*text != 0x00) {
+        l++;
+        text++;
+    }
+    return l;
+}
 /* sets color of main menu text */
 void color_main_menu() {
     for (i=0x0d; i<0x1a; i++) {
         vdp_colorizePattern(i, VDP_WHITE, VDP_BLACK);
+        nop();
+        nop();
     }
 }
 
@@ -119,10 +131,13 @@ void init(void) {
     vdp_colorizePattern(0x09, VDP_DARK_GREEN, VDP_BLACK);
     vdp_colorizePattern(0x0A, VDP_DARK_GREEN, VDP_BLACK);
     vdp_colorizePattern(0x0B, VDP_DARK_GREEN, VDP_BLACK);
-    vdp_colorizePattern(0x0C, VDP_WHITE, VDP_LIGHT_BLUE);  // Fast forward
+    vdp_colorizePattern(0x0C, VDP_WHITE, VDP_BLACK);  // fast forward
     vdp_colorizePattern(0x1A, VDP_DARK_RED, VDP_BLACK); // Double red line
-    vdp_colorizePattern(0x1B, VDP_WHITE, VDP_LIGHT_BLUE); // Fast backward
-    vdp_colorizePattern(0x1C, VDP_WHITE, VDP_LIGHT_BLUE); // Button
+    vdp_colorizePattern(0x1B, VDP_WHITE, VDP_BLACK); // left
+    vdp_colorizePattern(0x1C, VDP_WHITE, VDP_BLACK);
+    vdp_colorizePattern(0x1D, VDP_WHITE, VDP_BLACK);
+    vdp_colorizePattern(0x1E, VDP_WHITE, VDP_BLACK);
+    vdp_colorizePattern(0x1F, VDP_WHITE, VDP_BLACK);
 
     color_main_menu();
 
@@ -211,19 +226,19 @@ void hilight_main_menu(void) {
             }
             break;
         case 1:
-            for(i=0x11;i<0x15;i++) {
-                vdp_colorizePattern(i, VDP_BLACK, VDP_WHITE);
-                nop();
-                nop();
-            }
-            break;
-        case 2:
             for(i=0x15;i<0x1a;i++) {
                 vdp_colorizePattern(i, VDP_BLACK, VDP_WHITE);
                 nop();
                 nop();
             }
             break;
+        // case 2:
+        //     for(i=0x15;i<0x1a;i++) {
+        //         vdp_colorizePattern(i, VDP_BLACK, VDP_WHITE);
+        //         nop();
+        //         nop();
+        //     }
+        //     break;
     }
 }
 
@@ -236,7 +251,7 @@ void hilight_channel(void) {
     prev_channel_id = channel_id;
     // If we are in the parents then show the description below.
     if (state == 1) {
-        ia_getParentDescription(channel_id, descrbuf);
+        ia_getParentDescription(channel_id, tmpbuf);
         for(byte i=1;i<31;i++) {
             vdp_setCharAtLocationBuf(i,11,0x1A);
             vdp_setCharAtLocationBuf(i,21,0x1A);
@@ -246,7 +261,7 @@ void hilight_channel(void) {
                 vdp_setCharAtLocationBuf(j,i,0x00);
             }
         }
-        printWrappedAtLocationBuf(1,12,29,descrbuf);
+        printWrappedAtLocationBuf(1,12,29,tmpbuf);
     }
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
@@ -327,7 +342,7 @@ void load_parent_channels(void) {
         printAtLocationBuf(2, 3+i, namebuf);
     }
     vdp_setCharAtLocationBuf(1,22,0x1C);
-    printAtLocationBuf(2,22,"SELECT");
+    printAtLocationBuf(2,22,"Select");
 }
 
 /* Loads the sub channels */
@@ -339,51 +354,13 @@ void load_channels(void) {
         printAtLocationBuf(2, 3+i, namebuf);
     }
     vdp_setCharAtLocationBuf(1,22,0x1B);
-    printAtLocationBuf(2,22,"BACK");
+    printAtLocationBuf(2,22,"Back");
     vdp_setCharAtLocationBuf(7,22,0x1C);
-    printAtLocationBuf(8,22,"DETAILS AND LAUNCH");
+    printAtLocationBuf(8,22,"Select");
 
 }
 
-/* Loads the news title, news date and news content and prints it to the main
- * window.  News content is wrapped
- */
-void load_news(void) {
-    clear_main_panel();
-    ia_getNewsTitle(namebuf);
-    ia_getNewsDate(newsdate);
-    ia_getNewsContent(newsbuf);
-
-    printAtLocationBuf(1,3,newsdate);
-    printAtLocationBuf(3,4,namebuf);
-    printWrappedAtLocationBuf(1,6,29,newsbuf);
-}
-
-/* Displays the content of the about string stored in imagui.h.  Content is
- * wrapped.
- */
-void load_about() {
-    clear_main_panel();
-    printWrappedAtLocationBuf(1,3,30,about);
-}
-
-/* Loads the channel details screen when a user navigates to the right */
-void load_channel_detail(void) {
-    clear_main_panel();
-
-    ia_getChildName(parent_id, channel_id, namebuf);
-    ia_getChildAuthor(parent_id, channel_id, authorbuf);
-    ia_getChildDescription(parent_id, channel_id, descrbuf);
-
-    printAtLocationBuf(1,3,namebuf);
-    printAtLocationBuf(1,4,"By:");
-    printAtLocationBuf(4,4, authorbuf);
-    for(byte i=1;i<31;i++) {
-        vdp_setCharAtLocationBuf(i,5,0x1A);
-        vdp_setCharAtLocationBuf(i,21,0x1A);
-    }
-    printWrappedAtLocationBuf(7,7,22,descrbuf);
-
+void draw_icon_box(void) {
     vdp_setCharAtLocationBuf(2,7,0x08);
     vdp_setCharAtLocationBuf(3,7,0x01);
     vdp_setCharAtLocationBuf(4,7,0x01);
@@ -396,18 +373,101 @@ void load_channel_detail(void) {
     vdp_setCharAtLocationBuf(3,10,0x01);
     vdp_setCharAtLocationBuf(4,10,0x01);
     vdp_setCharAtLocationBuf(5,10,0x0A);
+}
 
-    ia_getChildIconTilePattern(parent_id, channel_id, newsbuf);
-    vdp_loadPatternToId(0xf0, newsbuf);
-    vdp_loadPatternToId(0xf1, newsbuf + 8);
-    vdp_loadPatternToId(0xf2, newsbuf + 16);
-    vdp_loadPatternToId(0xf3, newsbuf + 24);
+/* Loads the news title, news date and news content and prints it to the main
+ * window.  News content is wrapped
+ */
+void load_news(void) {
+    clear_main_panel();
+    for(byte i=1;i<31;i++) {
+        vdp_setCharAtLocationBuf(i,5,0x1A);
+        vdp_setCharAtLocationBuf(i,21,0x1A);
+    }
+    ia_extended_getNewsTitleById(news_id, namebuf);
+    ia_extended_getNewsDateById(news_id, newsdate);
+    ia_extended_getNewsContentById(news_id, tmpbuf);
+    printAtLocationBuf(1,3,newsdate);
+    printAtLocationBuf(3,4,namebuf);
 
-    ia_getChildIconTileColor(parent_id, channel_id, newsbuf);
-    vdp_loadColorToId(0xf0, newsbuf);
-    vdp_loadColorToId(0xf1, newsbuf + 8);
-    vdp_loadColorToId(0xf2, newsbuf + 16);
-    vdp_loadColorToId(0xf3, newsbuf + 24);
+    printWrappedAtLocationBuf(7,7,22,tmpbuf);
+
+    draw_icon_box();
+
+    ia_extended_getNewsIconTilePattern(news_id, tmpbuf);
+    vdp_loadPatternToId(0xf0, tmpbuf);
+    vdp_loadPatternToId(0xf1, tmpbuf + 8);
+    vdp_loadPatternToId(0xf2, tmpbuf + 16);
+    vdp_loadPatternToId(0xf3, tmpbuf + 24);
+
+    ia_extended_getNewsIconTileColor(news_id, tmpbuf);
+    vdp_loadColorToId(0xf0, tmpbuf);
+    vdp_loadColorToId(0xf1, tmpbuf + 8);
+    vdp_loadColorToId(0xf2, tmpbuf + 16);
+    vdp_loadColorToId(0xf3, tmpbuf + 24);
+
+    vdp_setCharAtLocationBuf(3, 8, 0xf0);
+    vdp_setCharAtLocationBuf(3, 9, 0xf1);
+    vdp_setCharAtLocationBuf(4, 8, 0xf2);
+    vdp_setCharAtLocationBuf(4, 9, 0xf3);
+
+    vdp_setCharAtLocationBuf(1,22,0x1C);
+    printAtLocationBuf(2,22,"Channels");
+    vdp_setCharAtLocationBuf(11,22,0x1E);
+    vdp_setCharAtLocationBuf(12,22,0x1F);
+    printAtLocationBuf(13,22,"Cycle");
+    sprintf(namebuf, "%u/%u", news_id+1, news_length);
+    printAtLocationBuf(31-str_len(namebuf),22,namebuf);
+}
+
+
+/* Displays the content of the about string stored in imagui.h.  Content is
+ * wrapped.
+ */
+void load_about(void) {
+    clear_main_panel();
+    for(byte i=1;i<31;i++) {
+        vdp_setCharAtLocationBuf(i,6,0x1A);
+        vdp_setCharAtLocationBuf(i,21,0x1A);
+    }
+    printWrappedAtLocationBuf(1,3,30, about_title);
+    printWrappedAtLocationBuf(1,8,30,about_descr);
+
+    vdp_setCharAtLocationBuf(1,22,0x1B);
+    printAtLocationBuf(2,22,"News");
+
+}
+
+/* Loads the channel details screen when a user navigates to the right */
+void load_channel_detail(void) {
+    clear_main_panel();
+
+    ia_getChildName(parent_id, channel_id, namebuf);
+    ia_getChildAuthor(parent_id, channel_id, authorbuf);
+    ia_getChildDescription(parent_id, channel_id, tmpbuf);
+
+    printAtLocationBuf(1,3,namebuf);
+    printAtLocationBuf(1,4,"By:");
+    printAtLocationBuf(4,4, authorbuf);
+    for(byte i=1;i<31;i++) {
+        vdp_setCharAtLocationBuf(i,5,0x1A);
+        vdp_setCharAtLocationBuf(i,21,0x1A);
+    }
+    printWrappedAtLocationBuf(7,7,22,tmpbuf);
+
+    draw_icon_box();
+
+    ia_getChildIconTilePattern(parent_id, channel_id, tmpbuf);
+    vdp_loadPatternToId(0xf0, tmpbuf);
+    vdp_loadPatternToId(0xf1, tmpbuf + 8);
+    vdp_loadPatternToId(0xf2, tmpbuf + 16);
+    vdp_loadPatternToId(0xf3, tmpbuf + 24);
+
+    ia_getChildIconTileColor(parent_id, channel_id, tmpbuf);
+    vdp_loadColorToId(0xf0, tmpbuf);
+    vdp_loadColorToId(0xf1, tmpbuf + 8);
+    vdp_loadColorToId(0xf2, tmpbuf + 16);
+    vdp_loadColorToId(0xf3, tmpbuf + 24);
 
     vdp_setCharAtLocationBuf(3, 8, 0xf0);
     vdp_setCharAtLocationBuf(3, 9, 0xf1);
@@ -415,9 +475,9 @@ void load_channel_detail(void) {
     vdp_setCharAtLocationBuf(4, 9, 0xf3);
 
     vdp_setCharAtLocationBuf(1,22,0x1B);
-    printAtLocationBuf(2,22,"BACK");
+    printAtLocationBuf(2,22,"Back");
     vdp_setCharAtLocationBuf(7,22,0x1C);
-    printAtLocationBuf(8,22,"LAUNCH");
+    printAtLocationBuf(8,22,"Launch");
 }
 
 
@@ -447,8 +507,10 @@ void main(void) {
 
     current_menu_id = 0;
     hilight_main_menu();
-    load_parent_channels();
-    hilight_channel();
+
+    news_length = ia_extended_getNewsCount();
+    news_id = news_length - 1;
+    load_news();
 
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
@@ -464,103 +526,77 @@ void main(void) {
     while (true) {
         joy = wait_for_joy();
         switch (state) {
-            case 0:         // Main menu
-                if (joy == Joy_Left) {
-                    current_menu_id --;
-                    if (current_menu_id == 0xFF) {
-                        current_menu_id = 2;
-                    } else if (current_menu_id == 0x00) {
-                        state = 1;
-                        load_parent_channels();
-                        parent_id = 0;
-                        channel_id = 0;
-                        hilight_main_menu();
-                        hilight_channel();
-                        break;
-                    }
-                } else if (joy == Joy_Right) {
-                    current_menu_id ++;
-                    if (current_menu_id > 2) {
-                        current_menu_id = 0;
-                        state = 1;
-                        load_parent_channels();
-                        parent_id = 0;
-                        channel_id = 0;
-                        hilight_main_menu();
-                        hilight_channel();
-                        break;
-                    }
-                } else if (joy == Joy_Down) {
-                    state = 1;
-                    load_parent_channels();
-                    prev_channel_id = 0;
-                    channel_id = 0;
-                    hilight_channel();
-                    break;
-                }
-
-                if (current_menu_id == 0) {
-                    load_parent_channels();
-                    prev_channel_id = 0;
-                    channel_id = 0;
-                    hilight_channel();
-                    state = 1;
-                } else if (current_menu_id == 1) {
-                    load_news();
-                } else if (current_menu_id == 2) {
-                    load_about();
-                }
-                hilight_main_menu();
-                break;
-            case 1:         // Parent channels
-                if (joy == Joy_Up) {
-                    channel_id --;
-                    if (channel_id == 0xFF) {
-                        channel_id = channel_length-1;
-                    }
-                } else if (joy == Joy_Down) {
-                    channel_id ++;
-                    if (channel_id > channel_length-1) {
-                        channel_id = 0;
-                    }
-                } else if (joy == Joy_Left) {
-                    current_menu_id = 2;
-                    state =0;
+            case 0:
+                if( joy == Joy_Left && current_menu_id == 1 ) {
+                    current_menu_id = 0;
                     hilight_main_menu();
-                    load_about();
-                    break;
-                } else if (joy == Joy_Right) {
+                    load_news();
+                } else if ( joy == Joy_Right && current_menu_id == 0) {
                     current_menu_id = 1;
-                    state = 0;
+                    load_about();
                     hilight_main_menu();
-                    load_news();
-                    break;
                 } else if (joy == Joy_Button) {
-                    parent_id = channel_id;
-                    load_channels();
+                    if( current_menu_id == 0) {
+                            state = 1;
+                            channel_id = 0;
+                            color_main_menu();
+                            load_parent_channels();
+                            hilight_channel();
+                    }
+                } else if (joy == Joy_Up) {
+                    news_id --;
+                    if (news_id == 0xFF) news_id = news_length-1;
+                    load_news();
+                } else if (joy == Joy_Down) {
+                    news_id ++;
+                    if (news_id > news_length-1) news_id = 0;
+                    load_news();
+                }
+                break;
+            case 1:
+                if( joy == Joy_Up ) {
+                    channel_id--;
+                    if (channel_id == 0xFF) {
+                        state = 0;
+                        current_menu_id = 0;
+                        hilight_main_menu();
+                        vdp_setCharAtLocationBuf(1,prev_channel_id+3,0x20);
+                        load_news();
+                        break;
+                    } 
+                } else if ( joy == Joy_Down ) {
+                    channel_id++;
+                    if (channel_id > channel_length-1) channel_id = 0;
+                } else if ( joy == Joy_Left) {
+                    state = 1;
+                    load_parent_channels();
                     channel_id = 0;
+                    hilight_channel();
+                    break;
+                } else if ( joy == Joy_Button ) {
                     state = 2;
+                    parent_id = channel_id;
+                    channel_id = 0;
+                    load_channels();
+                    hilight_channel();
+                    break;
                 }
                 hilight_channel();
                 break;
-            case 2:         // Sub channels
-                if (joy == Joy_Left) {
+            case 2:
+                if (joy == Joy_Up) {
+                    channel_id--;
+                    if (channel_id == 0xFF) channel_id = channel_length - 1;
+                } else if (joy == Joy_Down) {
+                    channel_id++;
+                    if (channel_id > channel_length -1) channel_id = 0;
+                } else if (joy == Joy_Left) {
                     state = 1;
-                    load_parent_channels();
-                    parent_id = 0;
                     channel_id = 0;
+                    color_main_menu();
+                    load_parent_channels();
                     hilight_channel();
                     break;
-                } else if (joy == Joy_Up) {
-                    channel_id --;
-                    if (channel_id == 0xFF) {
-                        channel_id = channel_length-1;
-                    }
-                } else if (joy == Joy_Down) {
-                    channel_id ++;
-                    if (channel_id > channel_length-1) {
-                        channel_id = 0;
-                    }
                 } else if (joy == Joy_Button) {
                     state = 3;
                     load_channel_detail();
@@ -573,11 +609,10 @@ void main(void) {
                     state = 2;
                     load_channels();
                     hilight_channel();
-                    break; 
+                    break;
                 } else if (joy == Joy_Button) {
                     launch();
                 }
-                break;
         } 
         vdp_waitVDPReadyInt();
         vdp_refreshViewPort();
