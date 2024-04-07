@@ -382,7 +382,37 @@ void load_channel_detail(void) {
         vdp_setCharAtLocationBuf(i,5,0x1A);
         vdp_setCharAtLocationBuf(i,21,0x1A);
     }
-    printWrappedAtLocationBuf(1,7,29,descrbuf);
+    printWrappedAtLocationBuf(7,7,22,descrbuf);
+
+    vdp_setCharAtLocationBuf(2,7,0x08);
+    vdp_setCharAtLocationBuf(3,7,0x01);
+    vdp_setCharAtLocationBuf(4,7,0x01);
+    vdp_setCharAtLocationBuf(5,7,0x09);
+    vdp_setCharAtLocationBuf(2,8,0x02);
+    vdp_setCharAtLocationBuf(5,8,0x02);
+    vdp_setCharAtLocationBuf(2,9,0x02);
+    vdp_setCharAtLocationBuf(5,9,0x02);
+    vdp_setCharAtLocationBuf(2,10,0x0B);
+    vdp_setCharAtLocationBuf(3,10,0x01);
+    vdp_setCharAtLocationBuf(4,10,0x01);
+    vdp_setCharAtLocationBuf(5,10,0x0A);
+
+    ia_getChildIconTilePattern(parent_id, channel_id, newsbuf);
+    vdp_loadPatternToId(0xf0, newsbuf);
+    vdp_loadPatternToId(0xf1, newsbuf + 8);
+    vdp_loadPatternToId(0xf2, newsbuf + 16);
+    vdp_loadPatternToId(0xf3, newsbuf + 24);
+
+    ia_getChildIconTileColor(parent_id, channel_id, newsbuf);
+    vdp_loadColorToId(0xf0, newsbuf);
+    vdp_loadColorToId(0xf1, newsbuf + 8);
+    vdp_loadColorToId(0xf2, newsbuf + 16);
+    vdp_loadColorToId(0xf3, newsbuf + 24);
+
+    vdp_setCharAtLocationBuf(3, 8, 0xf0);
+    vdp_setCharAtLocationBuf(3, 9, 0xf1);
+    vdp_setCharAtLocationBuf(4, 8, 0xf2);
+    vdp_setCharAtLocationBuf(4, 9, 0xf3);
 
     vdp_setCharAtLocationBuf(1,22,0x1B);
     printAtLocationBuf(2,22,"BACK");
