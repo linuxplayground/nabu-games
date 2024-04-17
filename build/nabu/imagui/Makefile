@@ -20,6 +20,7 @@ SRC_DIR=$(TOP)/imagui
 
 publish:
 	cp -f 000001.nabu "/mnt/c/dev/nabu/Nabu Internet Adapter/Local Source/headless.nabu"
+	cp -f 000001.nabu "/mnt/c/dev/nabu/Nabu Internet Adapter/Store/imagui.nabu"
 
 world:: clean all
 

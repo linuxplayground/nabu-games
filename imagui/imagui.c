@@ -14,7 +14,7 @@
 byte i = 0;
 byte state = 0;
 byte current_menu_id = 0;
-byte namebuf[64];
+byte namebuf[64] = {0};
 byte authorbuf[16];
 byte tmpbuf[512];
 byte newsdate[20];
@@ -24,6 +24,8 @@ byte prev_channel_id = 0;
 byte channel_length = 0;
 byte news_length = 0;
 byte news_id = 0;
+byte page_num = 1;
+byte num_pages = 1;
 
 /* Set the color of all patterns */
 void vdp_setPatternColor(uint8_t color) __z88dk_fastcall {
@@ -242,12 +244,48 @@ void hilight_main_menu(void) {
     }
 }
 
+/* Clears the main panel window */
+void clear_main_panel(void) {
+    for(i=3; i<23; i++) {
+        printAtLocationBuf(1,i,"                              ");
+    }
+}
+
+void update_channels(void) {
+    clear_main_panel();
+    for(i=page_num * 16 - 16; i<page_num * 16; i++) {
+        if (i<channel_length) {
+            ia_getChildName(parent_id, i, namebuf);
+            printAtLocationBuf(2, 3+(i%16), namebuf);
+        }
+    }
+    vdp_setCharAtLocationBuf(1,22,0x1B);
+    printAtLocationBuf(2,22,"Back");
+    vdp_setCharAtLocationBuf(7,22,0x1C);
+    printAtLocationBuf(8,22,"Select");
+    vdp_setCharAtLocationBuf(15,22,0x1D);
+    printAtLocationBuf(16,22,"Next");
+    sprintf(namebuf, "%u/%u", page_num, num_pages + 1);
+    printAtLocationBuf(31-3,22,namebuf);
+}
+
 /* Moves the cursor for channel navigation between items
  * SPELLING Notwithstanding
  */
 void hilight_channel(void) {
-    vdp_setCharAtLocationBuf(1,prev_channel_id+3,0x20);
-    vdp_setCharAtLocationBuf(1,channel_id+3,0x0C);
+    if (state == 2) {
+        if (channel_id >= page_num * 16) {
+            page_num ++;
+            update_channels();
+        }
+        if (channel_id < page_num * 16 - 16) {
+            page_num --;
+            if (page_num == 0) page_num = 1;
+            update_channels();
+        }
+    }
+    vdp_setCharAtLocationBuf(1,(prev_channel_id%16)+3,0x20);
+    vdp_setCharAtLocationBuf(1,(channel_id%16)+3,0x0C);
     prev_channel_id = channel_id;
     // If we are in the parents then show the description below.
     if (state == 1) {
@@ -326,15 +364,11 @@ byte wait_for_joy(void) {
     }
 }
 
-/* Clears the main panel window */
-void clear_main_panel(void) {
-    for(i=3; i<23; i++) {
-        printAtLocationBuf(1,i,"                              ");
-    }
-}
-
 /* Loads the parent channels into the HOME menu. */
 void load_parent_channels(void) {
+    printAtLocationBuf(12,1,"                   ");
+    ia_getCurrentDateTimeStr("dd/MM/yyyy HH:mm",17,namebuf);
+    printAtLocationBuf(31-16,1,namebuf);
     clear_main_panel();
     channel_length = ia_getParentCount();
     for(i=0; i<channel_length; i++) {
@@ -343,21 +377,16 @@ void load_parent_channels(void) {
     }
     vdp_setCharAtLocationBuf(1,22,0x1C);
     printAtLocationBuf(2,22,"Select");
+    channel_id = 0;
+    hilight_channel();
 }
 
 /* Loads the sub channels */
 void load_channels(void) {
-    clear_main_panel();
     channel_length = ia_getChildCount(parent_id);
-    for(i=0; i<channel_length; i++) {
-        ia_getChildName(parent_id, i,namebuf);
-        printAtLocationBuf(2, 3+i, namebuf);
-    }
-    vdp_setCharAtLocationBuf(1,22,0x1B);
-    printAtLocationBuf(2,22,"Back");
-    vdp_setCharAtLocationBuf(7,22,0x1C);
-    printAtLocationBuf(8,22,"Select");
-
+    num_pages = channel_length / 16;
+    page_num = 1; 
+    update_channels();
 }
 
 void draw_icon_box(void) {
@@ -512,6 +541,9 @@ void main(void) {
     news_id = news_length - 1;
     load_news();
 
+    ia_getCurrentDateTimeStr("dd/MM/yyyy HH:mm",17,namebuf);
+    printAtLocationBuf(31-16,1,namebuf);
+
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
@@ -541,7 +573,6 @@ void main(void) {
                             channel_id = 0;
                             color_main_menu();
                             load_parent_channels();
-                            hilight_channel();
                     }
                 } else if (joy == Joy_Up) {
                     news_id --;
@@ -567,15 +598,14 @@ void main(void) {
                 } else if ( joy == Joy_Down ) {
                     channel_id++;
                     if (channel_id > channel_length-1) channel_id = 0;
-                } else if ( joy == Joy_Left) {
-                    state = 1;
-                    load_parent_channels();
-                    channel_id = 0;
-                    hilight_channel();
-                    break;
                 } else if ( joy == Joy_Button ) {
                     state = 2;
                     parent_id = channel_id;
+
+                    printAtLocationBuf(12,1,"                   ");
+                    ia_getParentName(parent_id, namebuf);
+                    printAtLocationBuf(31-str_len(namebuf),1,namebuf);
+
                     channel_id = 0;
                     load_channels();
                     hilight_channel();
@@ -590,12 +620,14 @@ void main(void) {
                 } else if (joy == Joy_Down) {
                     channel_id++;
                     if (channel_id > channel_length -1) channel_id = 0;
+                } else if (joy == Joy_Right) {
+                    channel_id = (page_num + 1) * 16 - 16;
+                    if (channel_id > channel_length) channel_id = 0;
                 } else if (joy == Joy_Left) {
                     state = 1;
                     channel_id = 0;
                     color_main_menu();
                     load_parent_channels();
-                    hilight_channel();
                     break;
                 } else if (joy == Joy_Button) {
                     state = 3;
