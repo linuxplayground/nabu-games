@@ -5,6 +5,7 @@
 
 #define DISABLE_CURSOR
 #define byte uint8_t
+#define ITEMS_PER_PAGE 17
 
 #include "NABU-LIB.h"
 #include "RetroNET-IAControl.h"
@@ -26,6 +27,18 @@ byte news_length = 0;
 byte news_id = 0;
 byte page_num = 1;
 byte num_pages = 1;
+
+/*
+ * Lifted from DJs code drop in discord.
+ * This function, besides converting a string to upper will also truncate it
+ * by inserting a 0x00 into position 29 if we get there.
+ */
+void shift(byte *text) __z88dk_fastcall {
+    for (uint16_t i = 0; text[i] != 0x00; i++) {
+       if (text[i] != ' ' && text[i] != '\n') text[i] = text[i] + 0x60;
+    }
+}
+
 
 /* Set the color of all patterns */
 void vdp_setPatternColor(uint8_t color) __z88dk_fastcall {
@@ -118,9 +131,9 @@ void init(void) {
     vdp_initG2Mode(1, false, false, false, false);
     vdp_enableVDPReadyInt();
 
-    vdp_loadPatternTable(ASCII,1024);
+    vdp_loadPatternTable(ASCII,1840);
 
-    vdp_setPatternColor(0x41);
+    vdp_setPatternColor(VDP_LIGHT_BLUE<<4|VDP_BLACK);
 
     vdp_colorizePattern(0x01, VDP_DARK_GREEN, VDP_BLACK);
     vdp_colorizePattern(0x02, VDP_DARK_GREEN, VDP_BLACK);
@@ -141,6 +154,9 @@ void init(void) {
     vdp_colorizePattern(0x1E, VDP_WHITE, VDP_BLACK);
     vdp_colorizePattern(0x1F, VDP_WHITE, VDP_BLACK);
 
+    for (i=0x80; i<0xDF; i++) {
+        vdp_colorizePattern(i, VDP_GRAY, VDP_BLACK);
+    }
     color_main_menu();
 
     vdp_setBackDropColor(VDP_DARK_YELLOW);
@@ -185,18 +201,6 @@ void hard_reset(void) {
     __endasm;
 }
 
-/*
- * Lifted from DJs code drop in discord.
- * This function, besides converting a string to upper will also truncate it
- * by inserting a 0x00 into position 29 if we get there.
- */
-void toupper(byte *text) __z88dk_fastcall {
-    for (uint16_t i = 0; text[i] != 0x00; i++) {
-        if (text[i] >= 'a')
-            text[i] = text[i] - 32;
-    }
-}
-
 /* Draws the MAP from imagui.h This is faster than a for loop */
 void draw_screen(void) {
     uint16_t count = 0;
@@ -234,13 +238,6 @@ void hilight_main_menu(void) {
                 nop();
             }
             break;
-        // case 2:
-        //     for(i=0x15;i<0x1a;i++) {
-        //         vdp_colorizePattern(i, VDP_BLACK, VDP_WHITE);
-        //         nop();
-        //         nop();
-        //     }
-        //     break;
     }
 }
 
@@ -253,10 +250,14 @@ void clear_main_panel(void) {
 
 void update_channels(void) {
     clear_main_panel();
-    for(i=page_num * 16 - 16; i<page_num * 16; i++) {
+    for(byte i=1;i<31;i++) {
+        vdp_setCharAtLocationBuf(i,21,0x1A);
+    }
+
+    for(i=page_num * ITEMS_PER_PAGE - ITEMS_PER_PAGE; i<page_num * ITEMS_PER_PAGE; i++) {
         if (i<channel_length) {
             ia_getChildName(parent_id, i, namebuf);
-            printAtLocationBuf(2, 3+(i%16), namebuf);
+            printAtLocationBuf(2, 3+(i%ITEMS_PER_PAGE), namebuf);
         }
     }
     vdp_setCharAtLocationBuf(1,22,0x1B);
@@ -274,18 +275,18 @@ void update_channels(void) {
  */
 void hilight_channel(void) {
     if (state == 2) {
-        if (channel_id >= page_num * 16) {
+        if (channel_id >= page_num * 17) {
             page_num ++;
             update_channels();
         }
-        if (channel_id < page_num * 16 - 16) {
+        if (channel_id < page_num * 17 - 17) {
             page_num --;
             if (page_num == 0) page_num = 1;
             update_channels();
         }
     }
-    vdp_setCharAtLocationBuf(1,(prev_channel_id%16)+3,0x20);
-    vdp_setCharAtLocationBuf(1,(channel_id%16)+3,0x0C);
+    vdp_setCharAtLocationBuf(1,(prev_channel_id%ITEMS_PER_PAGE)+3,0x20);
+    vdp_setCharAtLocationBuf(1,(channel_id%ITEMS_PER_PAGE)+3,0x0C);
     prev_channel_id = channel_id;
     // If we are in the parents then show the description below.
     if (state == 1) {
@@ -299,6 +300,7 @@ void hilight_channel(void) {
                 vdp_setCharAtLocationBuf(j,i,0x00);
             }
         }
+        shift(tmpbuf);
         printWrappedAtLocationBuf(1,12,29,tmpbuf);
     }
     vdp_waitVDPReadyInt();
@@ -368,6 +370,7 @@ byte wait_for_joy(void) {
 void load_parent_channels(void) {
     printAtLocationBuf(12,1,"                   ");
     ia_getCurrentDateTimeStr("dd/MM/yyyy HH:mm",17,namebuf);
+    shift(namebuf);
     printAtLocationBuf(31-16,1,namebuf);
     clear_main_panel();
     channel_length = ia_getParentCount();
@@ -384,7 +387,7 @@ void load_parent_channels(void) {
 /* Loads the sub channels */
 void load_channels(void) {
     channel_length = ia_getChildCount(parent_id);
-    num_pages = channel_length / 16;
+    num_pages = channel_length / ITEMS_PER_PAGE;
     page_num = 1; 
     update_channels();
 }
@@ -419,6 +422,7 @@ void load_news(void) {
     printAtLocationBuf(1,3,newsdate);
     printAtLocationBuf(3,4,namebuf);
 
+    shift(tmpbuf);
     printWrappedAtLocationBuf(7,7,22,tmpbuf);
 
     draw_icon_box();
@@ -456,13 +460,19 @@ void load_news(void) {
 void load_about(void) {
     clear_main_panel();
     for(byte i=1;i<31;i++) {
-        vdp_setCharAtLocationBuf(i,6,0x1A);
+        vdp_setCharAtLocationBuf(i,5,0x1A);
         vdp_setCharAtLocationBuf(i,21,0x1A);
     }
     printWrappedAtLocationBuf(1,3,30, about_title);
     printWrappedAtLocationBuf(1,8,30,about_descr);
 
     vdp_setCharAtLocationBuf(1,22,0x1B);
+    ia_getAdapterVersion(namebuf);
+    sprintf(tmpbuf, "IA: %s", namebuf);
+    printAtLocationBuf(1,20,tmpbuf);
+    if (ia_getNewVersionAvailable()) {
+        printAtLocationBuf(10,23,"NEW VERSION AVAILABLE");
+    }
     printAtLocationBuf(2,22,"News");
 
 }
@@ -482,6 +492,7 @@ void load_channel_detail(void) {
         vdp_setCharAtLocationBuf(i,5,0x1A);
         vdp_setCharAtLocationBuf(i,21,0x1A);
     }
+    shift(tmpbuf);
     printWrappedAtLocationBuf(7,7,22,tmpbuf);
 
     draw_icon_box();
@@ -531,6 +542,7 @@ void launch() {
  */
 void main(void) {
     init();
+    shift(about_descr);
     vdp_clearScreen();
     draw_screen();
 
@@ -542,6 +554,7 @@ void main(void) {
     load_news();
 
     ia_getCurrentDateTimeStr("dd/MM/yyyy HH:mm",17,namebuf);
+    shift(namebuf);
     printAtLocationBuf(31-16,1,namebuf);
 
     vdp_waitVDPReadyInt();
@@ -604,6 +617,7 @@ void main(void) {
 
                     printAtLocationBuf(12,1,"                   ");
                     ia_getParentName(parent_id, namebuf);
+                    shift(namebuf);
                     printAtLocationBuf(31-str_len(namebuf),1,namebuf);
 
                     channel_id = 0;
@@ -621,7 +635,7 @@ void main(void) {
                     channel_id++;
                     if (channel_id > channel_length -1) channel_id = 0;
                 } else if (joy == Joy_Right) {
-                    channel_id = (page_num + 1) * 16 - 16;
+                    channel_id = (page_num + 1) * ITEMS_PER_PAGE - ITEMS_PER_PAGE;
                     if (channel_id > channel_length) channel_id = 0;
                 } else if (joy == Joy_Left) {
                     state = 1;
