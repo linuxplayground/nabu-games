@@ -1,7 +1,7 @@
 //Set all values in the color table to color.
 void vdp_setPatternColor(uint8_t color) {
     vdp_setWriteAddress(_vdpColorTableAddr);
-    for (uint16_t i = 0; i < 0x1800; i++) {
+    for (uint16_t i = 0; i < 0x400; i++) {
         IO_VDPDATA = color;
         nop();
         nop();

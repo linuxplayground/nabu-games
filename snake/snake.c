@@ -46,8 +46,8 @@ void init(void) {
     vdp_clearVRAM();
     vdp_initG2Mode(1, false, false, false, false);
     vdp_loadPatternTable(FAT,0x330);
-    uint16_t _vdpColorTableAddr = 0x2000;
-    uint16_t _vdpColorTableSize = 0x1800;
+    uint16_t _vdpColorTableAddr = 0x400;
+    uint16_t _vdpColorTableSize = 0x400;
     vdp_setWriteAddress(_vdpColorTableAddr);
     vdp_setPatternColor(0x41);
     vdp_setBackDropColor(VDP_DARK_YELLOW);                         //Set border color
