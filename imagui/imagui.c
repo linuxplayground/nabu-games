@@ -256,7 +256,7 @@ void update_channels(void) {
 
     for(i=page_num * ITEMS_PER_PAGE - ITEMS_PER_PAGE; i<page_num * ITEMS_PER_PAGE; i++) {
         if (i<channel_length) {
-            ia_getChildName(parent_id, i, namebuf);
+            ia_getChildName2(parent_id, i, namebuf);
             printAtLocationBuf(2, 3+(i%ITEMS_PER_PAGE), namebuf);
         }
     }
@@ -386,7 +386,7 @@ void load_parent_channels(void) {
 
 /* Loads the sub channels */
 void load_channels(void) {
-    channel_length = ia_getChildCount(parent_id);
+    channel_length = ia_getChildCount2(parent_id);
     num_pages = channel_length / ITEMS_PER_PAGE;
     page_num = 1; 
     update_channels();
@@ -481,9 +481,9 @@ void load_about(void) {
 void load_channel_detail(void) {
     clear_main_panel();
 
-    ia_getChildName(parent_id, channel_id, namebuf);
-    ia_getChildAuthor(parent_id, channel_id, authorbuf);
-    ia_getChildDescription(parent_id, channel_id, tmpbuf);
+    ia_getChildName2(parent_id, channel_id, namebuf);
+    ia_getChildAuthor2(parent_id, channel_id, authorbuf);
+    ia_getChildDescription2(parent_id, channel_id, tmpbuf);
 
     printAtLocationBuf(1,3,namebuf);
     printAtLocationBuf(1,4,"By:");
@@ -497,13 +497,13 @@ void load_channel_detail(void) {
 
     draw_icon_box();
 
-    ia_getChildIconTilePattern(parent_id, channel_id, tmpbuf);
+    ia_getChildIconTilePattern2(parent_id, channel_id, tmpbuf);
     vdp_loadPatternToId(0xf0, tmpbuf);
     vdp_loadPatternToId(0xf1, tmpbuf + 8);
     vdp_loadPatternToId(0xf2, tmpbuf + 16);
     vdp_loadPatternToId(0xf3, tmpbuf + 24);
 
-    ia_getChildIconTileColor(parent_id, channel_id, tmpbuf);
+    ia_getChildIconTileColor2(parent_id, channel_id, tmpbuf);
     vdp_loadColorToId(0xf0, tmpbuf);
     vdp_loadColorToId(0xf1, tmpbuf + 8);
     vdp_loadColorToId(0xf2, tmpbuf + 16);
@@ -526,13 +526,13 @@ void load_channel_detail(void) {
  */
 void launch() {
     clear_main_panel();
-    ia_getChildName(parent_id, channel_id, namebuf);
+    ia_getChildName2(parent_id, channel_id, namebuf);
     printAtLocationBuf(1, 5, "Loading...");
     printAtLocationBuf(1, 6, namebuf);
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
-    ia_setSelection(parent_id, channel_id);
+    ia_setSelection2(parent_id, channel_id);
     delay(120);
     hard_reset();
 }
