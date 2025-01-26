@@ -8,35 +8,17 @@
 #include <strings.h>
 #include "snake.h"
 
-FILE * fp;
-
 /* Fetch the high score from disk*/
+/* This feature is broken */
 uint16_t getHighScore(void) {
     int hs;
-    #if BIN_TYPE == BIN_CPM
-        fp = fopen("snake.dat", "r");
-        if (fp) {
-            fscanf(fp, "%d", &hs);
-        } else {
-            hs = 0;
-        }
-        fclose(fp);
-    #else
-        hs = 0;
-    #endif
+    hs = 0;
     return hs;
 }
 
 /* Write the high score to disk*/
 void setHighScore(uint16_t hs) {
-    #if BIN_TYPE == BIN_CPM
-        fp = fopen("snake.dat", "w");
-        fprintf(fp, "%d", hs);
-        fclose(fp);
-        // printf("High score written to disk was: %d\n", hs);
-    #else
-        (void)hs;
-    #endif
+    (void)hs;
 }
 
 

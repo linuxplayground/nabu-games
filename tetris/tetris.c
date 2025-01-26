@@ -186,30 +186,16 @@ int new_block(void) {
     return t;
 }
 
+/* Get and Set High Score is broken */
 uint16_t getHighScore(void) {
     uint16_t hs;
-    #if BIN_TYPE == BIN_CPM
-        FILE * fp = fopen("tetris.dat", "r");
-        if (fp) {
-            fscanf(fp, "%d", &hs);
-        } else {
-            hs = 0;
-        }
-        fclose(fp);
-    #else
-        hs = 0;
-    #endif
+    hs = 0;
     return hs;
 }
 
+/* Get and Set High Score is broken */
 void setHighScore(uint16_t hs) __z88dk_fastcall {
-    #if BIN_TYPE == BIN_CPM
-        FILE * fp = fopen("tetris.dat", "w");
-        fprintf(fp, "%d", hs);
-        fclose(fp);
-    #else
-        (void)hs;
-    #endif
+    (void)hs;
 }
 
 void play(void) {
