@@ -580,7 +580,6 @@ bool menu(void) {
     centerText("INVADERS - V3.5",4);
     centerText("BY PRODUCTIONDAVE",5);
 
-    high_score = getHighScore();
     centerText("SCORE:     ",13);
     sprintf(tb, "%06d", score);
     printAtLocationBuf(17, 13, tb);
@@ -616,6 +615,7 @@ void main(void) {
     level_up = false;
     game_speed = DEFAULT_GAME_SPEED;
     score = 0;
+    high_score = 0;
     extra_life_given = false;
 
     while (play_again) {
@@ -628,7 +628,7 @@ void main(void) {
         } else {
             play_again = false;
         };
-        setHighScore(high_score);
+        //setHighScore(high_score);
     }
 
     vdp_disableVDPReadyInt();
