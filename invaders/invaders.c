@@ -1,3 +1,4 @@
+// vim: set ts=4 sw=4:
 // #define BIN_TYPE BIN_CPM <---- DEFINED IN MAKEFILE
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
@@ -8,48 +9,16 @@
 #include "nabu-games.h"
 #include "audio.h"
 
-
-/* Get and Set High Score is broken */
-uint16_t getHighScore(void) {
-    uint16_t hs;
-    hs = 0;
-    return hs;
-}
-
-/* Get and Set High Score is broken */
-void setHighScore(uint16_t hs) __z88dk_fastcall {
-    (void)hs;
-}
-
-void load_pattern_colours(uint8_t start, uint8_t count, uint8_t color) {
-    vdp_setWriteAddress(_vdpColorTableAddr + start * 8);
-    for (uint8_t i=0; i<count*8; i++) {
-        IO_VDPDATA = color;
-    }
-}
-
 void initDisplay(void) {
     initNABULib();
     vdp_clearVRAM();
-    vdp_initG2Mode(1, true, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
+    vdp_initG1Mode(1, true, false, false, false); //uint8_t bgColor, bool bigSprites, bool scaleSprites, bool autoScroll, don't split thirds
+    vdp_loadPatternTable(patterns,0x3C8);
+    vdp_setBackDropColor(VDP_DARK_YELLOW);          //Set border color
 
-    vdp_enableVDPReadyInt();
-
-    vdp_loadPatternTable(patterns, 0x3C8);
-
-    //Load same colour into every colour table cell.
-    vdp_setPatternColor(0xe1);
-
-    vdp_setBackDropColor(VDP_DARK_YELLOW);
-
-    // load sprite patterns
+    vdp_loadColorTable(colors,32);
     vdp_loadSpritePatternNameTable(6, sprites);
-
-    // Set up the alien colours
-    load_pattern_colours(0x60, 8, 0x61);
-    load_pattern_colours(0x68, 8, 0x51);
-    load_pattern_colours(0x70, 8, 0x31);
-
+    vdp_enableVDPReadyInt();
 }
 
 void draw_sheilds(void) {
@@ -320,13 +289,13 @@ void game(void) {
         }
 
         // Check player input.
-        if (isKeyPressed()) {
-            // if (getChar() == 0x20) {
-            //     godMode = true;
-            // } else {
-                running = false;
-            // }
+        uint8_t _key = getKey();
+        if (_key == 'g') {
+            godMode = true;
+        } else if (_key == 0x1b) {
+            running = false;
         }
+
         // Left
         if (getJoyStatus(0) & Joy_Left) {
             playerx = playerx - PLAYER_SPEED;
@@ -595,16 +564,18 @@ bool menu(void) {
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort();
 
+    uint8_t _key;
     while (true) {
         if (getJoyStatus(0) & Joy_Button) {
             return true;
         }
-        if (isKeyPressed()) {
-            if (getChar() == 0x1b) {
+        _key = getKey();
+        switch(_key) {
+            case 0x1b:
                 return false;
-            } else {
+            case 0x20:
                 return true;
-            }
+            default: {}
         }
     }
 }
