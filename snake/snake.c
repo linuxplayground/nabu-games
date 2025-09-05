@@ -1,3 +1,4 @@
+// vim: set ts=4 sw=4:
 #define DISABLE_HCCA_RX_INT
 #define DISABLE_CURSOR
 #define DEBUG_VDP_INT
@@ -8,38 +9,26 @@
 #include <strings.h>
 #include "snake.h"
 
-/* Fetch the high score from disk*/
-/* This feature is broken */
-uint16_t getHighScore(void) {
-    int hs;
-    hs = 0;
-    return hs;
+void add_pattern(uint8_t* pat, uint8_t pat_num) {
+    vdp_setWriteAddress(_vdpPatternGeneratorTableAddr + (pat_num * 8));
+    for(uint8_t i=0; i<8; i++) {
+        IO_VDPDATA = pat[i];
+    }
 }
-
-/* Write the high score to disk*/
-void setHighScore(uint16_t hs) {
-    (void)hs;
-}
-
-
 /* Set up the graphics, audio and vdp interrupts.*/
 void init(void) {
     initNABULib();
     vdp_clearVRAM();
-    vdp_initG2Mode(1, false, false, false, false);
+    vdp_initG1Mode(1, false, false, false, false);
     vdp_loadPatternTable(FAT,0x330);
-    uint16_t _vdpColorTableAddr = 0x2000;
-    uint16_t _vdpColorTableSize = 0x1800;
-    vdp_setWriteAddress(_vdpColorTableAddr);
-    vdp_setPatternColor(0x41);
-    vdp_setBackDropColor(VDP_DARK_YELLOW);                         //Set border color
-
-    // overwrite special colours.
-    vdp_colorizePattern(APPLE,      VDP_LIGHT_GREEN, VDP_BLACK);   //Apple
-    vdp_colorizePattern(HEAD_UP,    VDP_MAGENTA,     VDP_BLACK);   //Snake head
-    vdp_colorizePattern(HEAD_DOWN,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
-    vdp_colorizePattern(HEAD_LEFT,  VDP_MAGENTA,     VDP_BLACK);   //Snake head
-    vdp_colorizePattern(HEAD_RIGHT, VDP_MAGENTA,     VDP_BLACK);   //Snake head
+    vdp_loadColorTable(colors,32);
+    vdp_setBackDropColor(VDP_DARK_YELLOW);
+    // add snake patterns
+    add_pattern(snake_pat_up, 0x81); // up
+    add_pattern(snake_pat_down, 0x82); // down
+    add_pattern(snake_pat_left, 0x83); // left
+    add_pattern(snake_pat_right, 0x84); // right
+    add_pattern(snake_pat_apple, 0x88); // apple
 
     initNABULIBAudio();
     nt_init(music);
@@ -57,7 +46,8 @@ bool menu(void) {
 
     centerText("SNAKE - V3.5",4);
     centerText("BY PRODUCTIONDAVE",5);
-    centerText("JOYSTICK ONLY",8);
+    centerText("SPACE = KBD",8);
+    centerText("BTN = JOY",9);
     centerText("BTN TO PLAY AGAIN",11);
     centerText(score_str,13);
     centerText(high_score_str,14);
@@ -68,14 +58,20 @@ bool menu(void) {
     vdp_waitVDPReadyInt();
     vdp_refreshViewPort(); 
     while(true) {
-        if (getJoyStatus(0) & Joy_Button)
+
+        if (getJoyStatus(0) & Joy_Button) {
+            inp_joy = true;
             return true;
-        if (isKeyPressed()) {
-            uint8_t _key = getChar();
-            if(_key == 0x1b)
-                return false;
-            if(_key == ' ')
-                return true;
+        }
+
+        uint8_t _key = getKey();
+        switch(_key) {
+          case 0x1b: return false;
+          case 0x20: {
+            inp_joy = false;
+            return true;
+          }
+          default: {}
         }
     }
 }
@@ -90,7 +86,7 @@ void new_apple(void) {
             taken = false;
             apple.x = x;
             apple.y = y;
-        }      
+        }
     }
     vdp_setCharAtLocationBuf(apple.x, apple.y, applechar);
 }
@@ -180,7 +176,7 @@ void game(void) {
             nt_stopSounds();
             bool flash = false;
             while(true) {
-                if (getJoyStatus(0) & Joy_Button) {
+                if (getKey() || getJoyStatus(0) & Joy_Button) {
                     pause = false;
                     break;
                 }
@@ -196,24 +192,51 @@ void game(void) {
             }
             vdp_setCharAtLocationBuf(head.x, head.y, 0x00);
         } else { //if not paused
-            if( (getJoyStatus(0) & Joy_Left) && (head.dir != HEAD_RIGHT)) {
-                head.dir = HEAD_LEFT;
-                head.pattern = HEAD_LEFT;
-            }
-            else if( (getJoyStatus(0) & Joy_Up) && (head.dir != HEAD_DOWN)) {
-                head.dir = HEAD_UP;
-                head.pattern = HEAD_UP;
-            }
-            else if( (getJoyStatus(0) & Joy_Right) && (head.dir != HEAD_LEFT)) {
-                head.dir = HEAD_RIGHT;
-                head.pattern = HEAD_RIGHT;
-            }
-            else if( (getJoyStatus(0) & Joy_Down) && (head.dir != HEAD_UP)) {
-                head.dir = HEAD_DOWN;
-                head.pattern = HEAD_DOWN;
+            if (inp_joy) {
+              if( (getJoyStatus(0) & Joy_Left) && (head.dir != HEAD_RIGHT)) {
+                  head.dir = HEAD_LEFT;
+                  head.pattern = HEAD_LEFT;
+              }
+              else if( (getJoyStatus(0) & Joy_Up) && (head.dir != HEAD_DOWN)) {
+                  head.dir = HEAD_UP;
+                  head.pattern = HEAD_UP;
+              }
+              else if( (getJoyStatus(0) & Joy_Right) && (head.dir != HEAD_LEFT)) {
+                  head.dir = HEAD_RIGHT;
+                  head.pattern = HEAD_RIGHT;
+              }
+              else if( (getJoyStatus(0) & Joy_Down) && (head.dir != HEAD_UP)) {
+                  head.dir = HEAD_DOWN;
+                  head.pattern = HEAD_DOWN;
+              }
+            } else {
+                uint8_t _key = getKey();
+                switch(_key) {
+                        case 'a':
+                        case 'A':
+                            head.dir = HEAD_LEFT;
+                            head.pattern = HEAD_LEFT;
+                            break;
+                        case 'w':
+                        case 'W':
+                            head.dir = HEAD_UP;
+                            head.pattern = HEAD_UP;
+                            break;
+                        case 'd':
+                        case 'D':
+                            head.dir = HEAD_RIGHT;
+                            head.pattern = HEAD_RIGHT;
+                            break;
+                        case 's':
+                        case 'S':
+                            head.dir = HEAD_DOWN;
+                            head.pattern = HEAD_DOWN;
+                            break;
+                        default: {}
+                }
             }
 
-            /* Regulate the speed of the game */
+           /* Regulate the speed of the game */
             if (ticks % game_speed == 0) {
                 // move the head
                 if (head.dir == HEAD_LEFT) {
@@ -240,7 +263,7 @@ void game(void) {
                     new_apple();
                     apples_eaten ++;
                     score = score + abs(apples_eaten / 10) + 1;
-                    
+
                     if (apples_eaten % 10 == 0 && apples_eaten > 20 && game_speed > 5) {
                         game_speed --;
                     }
@@ -250,7 +273,7 @@ void game(void) {
                         playNoteDelay(2,65,15);
                         delay(15);
                         playNoteDelay(1, 71, 15);
-                        playNoteDelay(2, 71, 15);
+                       playNoteDelay(2, 71, 15);
                         if (level > 4)
                             level = 0;
                         delay(45);
@@ -315,7 +338,6 @@ void game(void) {
     /* We have crashed - update and save high score */
     if (high_score < score ) {
         high_score = score;
-        setHighScore(high_score);
     }
     /* NOTE XXX
     * If I try to save the high score here (after playing the crash sound) The game crashes.
@@ -332,7 +354,7 @@ void game(void) {
 
 void main(void) {
     init();
-    high_score = getHighScore();
+    high_score = 100;
     /* While the user continues at the menu, play the game.*/
     while(menu()) {
         setup_game();
