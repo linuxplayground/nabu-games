@@ -275,6 +275,16 @@ void new_game(void) {
     ufo_active = false;
 }
 
+// Pew Pew sound
+void pew(void) {
+    pew_frames = 8;
+    pew_sweep = 0x50;
+    ayWrite(AY_CHA_TONE_L, 0);
+    ayWrite(AY_CHA_TONE_H, pew_sweep);
+    ayWrite(AY_CHA_AMPL, 0x0A);
+}
+
+
 // Play a game.
 void game(void) {
 
@@ -321,7 +331,8 @@ void game(void) {
                 bullet_active = true;
                 // pew
                 if(!ufo_active) {
-                    playNoteDelay(0,60,8);
+                    //playNoteDelay(0,60,8);
+                    pew();
                 }
 
                 fire_count_index --;
@@ -334,8 +345,8 @@ void game(void) {
                         ufo_active = true;
                         // Turn on UFO siren
                         ayWrite(AY_CHB_AMPL, 0x1F);
-                        ayWrite(AY_NOISE_GEN, 0x00);
-                        ayWrite(AY_CHB_TONE_H, 0x00);
+                        //ayWrite(AY_CHC_AMPL, 0x00);
+                        ayWrite(AY_CHB_TONE_H, 0x80);
                         ayWrite(AY_CHB_TONE_L, 0x20);
                         ayWrite(AY_ENV_PERIOD_L, 0xff);
                         ayWrite(AY_ENV_PERIOD_H, 0x02);
@@ -359,7 +370,7 @@ void game(void) {
                     alien_note_index ++;
                     if (alien_note_index > 3)
                         alien_note_index = 0;
-                    ayWrite(AY_CHB_AMPL, 0x0F);
+                    //ayWrite(AY_CHB_AMPL, 0x08);
                     playNoteDelay(1, alien_notes[alien_note_index], 6);
                     beat_counter = 4;
                 }
@@ -445,8 +456,8 @@ void game(void) {
                         // From snake. - Disaster!
                         ayWrite(AY_NOISE_GEN,  0x0f); //Noise Period
                         ayWrite(AY_ENABLES,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
-                        ayWrite(AY_CHA_AMPL,  0x10); //amplitude controlled by envelope
-                        ayWrite(AY_CHB_AMPL,  0x10); //amplitude controlled by envelope
+                        ayWrite(AY_CHA_AMPL,  0x0); //amplitude controlled by envelope
+                        ayWrite(AY_CHB_AMPL,  0x0); //amplitude controlled by envelope
                         ayWrite(AY_CHC_AMPL, 0x10); //amplitude controlled by envelope
                         ayWrite(AY_ENV_PERIOD_L, 0xa0); //Envelope period fine
                         ayWrite(AY_ENV_PERIOD_H, 0x40); //Envelope period course
@@ -523,6 +534,13 @@ void game(void) {
                 explode_active = EXPLODE_FRAMES;
             }
         }
+        if(pew_frames > 0) {
+            pew_frames --;
+            pew_sweep+=16;
+            ayWrite(AY_CHA_TONE_L,pew_sweep);
+        } else {
+            ayWrite(AY_CHA_AMPL,0x0);
+        }
         if (ticks == 0) {
             vdp_waitVDPReadyInt();  // kill a frame.
             vdp_refreshViewPort();
@@ -537,6 +555,7 @@ bool menu(void) {
     vdp_disableSprite(BOMB);
     vdp_disableSprite(BULLET);
     vdp_disableSprite(EXPLODE);
+    vdp_disableSprite(UFO);
 
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
@@ -550,7 +569,7 @@ bool menu(void) {
         centerText("BTN TO PLAY NEXT LEVEL",9);
     }
 
-    centerText("INVADERS - V3.5",4);
+    centerText("INVADERS - V3.6",4);
     centerText("BY PRODUCTIONDAVE",5);
 
     centerText("SCORE:     ",13);

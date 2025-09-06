@@ -379,5 +379,8 @@ uint16_t ufo_scores[16] = {100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 1
 uint8_t ufo_active;
 uint8_t ufo_x;
 
+uint8_t pew_frames;
+uint8_t pew_sweep;
+
 uint8_t godMode;
 char tb[6] = { 0 };
