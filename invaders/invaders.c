@@ -288,7 +288,7 @@ void pew(void) {
 // Play a game.
 void game(void) {
 
-    ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A
+    ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A and B
 
     while (running) {
         ticks ++;
@@ -330,10 +330,10 @@ void game(void) {
                 vdp_spriteInit(BULLET, BULLET_SPRITE, bulletx, bullety, 5);
                 bullet_active = true;
                 // pew
-                if(!ufo_active) {
+                //if(!ufo_active) {
                     //playNoteDelay(0,60,8);
                     pew();
-                }
+                //}
 
                 fire_count_index --;
                 if (fire_count_index == 0) {
@@ -345,9 +345,9 @@ void game(void) {
                         ufo_active = true;
                         // Turn on UFO siren
                         ayWrite(AY_CHB_AMPL, 0x1F);
-                        //ayWrite(AY_CHC_AMPL, 0x00);
-                        ayWrite(AY_CHB_TONE_H, 0x80);
-                        ayWrite(AY_CHB_TONE_L, 0x20);
+                        ayWrite(AY_CHC_AMPL, 0x00);
+                        ayWrite(AY_CHB_TONE_H, 0x40);
+                        ayWrite(AY_CHB_TONE_L, 0x80);
                         ayWrite(AY_ENV_PERIOD_L, 0xff);
                         ayWrite(AY_ENV_PERIOD_H, 0x02);
                         ayWrite(AY_ENV_SHAPE, AY_ENV_SHAPE_TRIANGLE);
@@ -372,6 +372,7 @@ void game(void) {
                         alien_note_index = 0;
                     //ayWrite(AY_CHB_AMPL, 0x08);
                     playNoteDelay(1, alien_notes[alien_note_index], 6);
+                    ayWrite(AY_CHC_AMPL, 0b00000000); //disable noise channel
                     beat_counter = 4;
                 }
             }
@@ -455,13 +456,12 @@ void game(void) {
                         vdp_spriteInit(EXPLODE, EXPLODE_SPRITE, playerx, 176, 15);
                         // From snake. - Disaster!
                         ayWrite(AY_NOISE_GEN,  0x0f); //Noise Period
-                        ayWrite(AY_ENABLES,  0b01000111); //mixer 01000111 = DISABLE IO B, DISABLE TONE, B, C
-                        ayWrite(AY_CHA_AMPL,  0x0); //amplitude controlled by envelope
-                        ayWrite(AY_CHB_AMPL,  0x0); //amplitude controlled by envelope
+                        ayWrite(AY_CHA_AMPL,  0x0);   //turn off tone a
+                        ayWrite(AY_CHB_AMPL,  0x0);   //turn off tone b
                         ayWrite(AY_CHC_AMPL, 0x10); //amplitude controlled by envelope
                         ayWrite(AY_ENV_PERIOD_L, 0xa0); //Envelope period fine
                         ayWrite(AY_ENV_PERIOD_H, 0x40); //Envelope period course
-                        ayWrite(AY_ENV_SHAPE, 0x00); //Envelope shape
+                        ayWrite(AY_ENV_SHAPE, 0x00); //Envelope shape decay
 
                         // Deal with new life.
                         lives --;
@@ -489,7 +489,6 @@ void game(void) {
                                 vdp_spriteInit(PLAYER, PLAYER_SPRITE, 120, 176, 15);
                                 delay(15);
                             }
-                            ayWrite(AY_ENABLES, 0b01011100); //Only noise on C and Tones on A
                         }
                     }
                 }
@@ -512,6 +511,7 @@ void game(void) {
             if (ufo_x == 0) {
                 vdp_disableSprite(UFO);
                 ufo_active = false;
+                ayWrite(AY_CHB_AMPL, 0);
             }
         }
 
