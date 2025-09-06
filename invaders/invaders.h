@@ -351,7 +351,7 @@ uint8_t drop_flag;
 uint8_t top_row;
 uint8_t bottom_row;
 uint8_t num_rows;
-uint8_t playerx;
+int16_t playerx;
 uint8_t update_player;
 uint8_t bulletx;
 uint8_t bullety;

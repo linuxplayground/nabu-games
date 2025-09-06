@@ -299,8 +299,8 @@ void game(void) {
         // Left
         if (getJoyStatus(0) & Joy_Left) {
             playerx = playerx - PLAYER_SPEED;
-            if (playerx < 8) {
-                playerx = 8;
+            if (playerx < 0) {
+                playerx = 0;
             }
             update_player = true;
         }
@@ -534,6 +534,10 @@ void game(void) {
 // Display a menu
 bool menu(void) {
     ayWrite(AY_ENABLES, 0b01111111); // disable all sounds
+    vdp_disableSprite(BOMB);
+    vdp_disableSprite(BULLET);
+    vdp_disableSprite(EXPLODE);
+
     vdp_waitVDPReadyInt();
     uint8_t tmp = IO_VDPLATCH;  //dummy read
     vdp_clearScreen();
