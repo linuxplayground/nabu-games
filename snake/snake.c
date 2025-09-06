@@ -44,7 +44,7 @@ bool menu(void) {
     sprintf(score_str,      "SCORE:      %03d", score);
     sprintf(high_score_str, "HIGH SCORE: %03d", high_score);
 
-    centerText("SNAKE - V3.5",4);
+    centerText("SNAKE - V4.0",4);
     centerText("BY PRODUCTIONDAVE",5);
     centerText("SPACE = KBD",8);
     centerText("BTN = JOY",9);

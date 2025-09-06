@@ -569,7 +569,7 @@ bool menu(void) {
         centerText("BTN TO PLAY NEXT LEVEL",9);
     }
 
-    centerText("INVADERS - V3.6",4);
+    centerText("INVADERS - V4.0",4);
     centerText("BY PRODUCTIONDAVE",5);
 
     centerText("SCORE:     ",13);

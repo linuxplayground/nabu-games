@@ -1,5 +1,10 @@
 # Tetris Change Log
 
+v4.0:
+
+* Game runs in TMS9918 Graphics Mode 1
+* Keyboard input is now via direct call to CP/M on the Retro and Nouveau platforms.  On the Nabu, this call is emulated via the standard NABU interrupt code.
+
 v3.0:
 
 Based on https://tetris.wiki/Tetris_Guideline#Indispensable_rules
@@ -20,7 +25,7 @@ _Rotations can not result in a tetronimo being kicked into a new position if the
       |2 (double) | 100
       |3 (triple) | 300
       |4 (tetris) | 1200
-    
+
     * Drops
 
       If the piece was hard dropped, an amount equal to the number of rows covered by the hard drop plus 1 is added. Otherwise, no score for dropping is added.

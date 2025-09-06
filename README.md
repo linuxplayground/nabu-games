@@ -46,7 +46,13 @@ Use the joystick to play.  LEFT AND RIGHT AND FIRE TO SHOOT.  That's it.
 
 ## NABU-LIB
 
-The games in this repo depend on NABU-LIB developed by DJSures. [https://github.com/DJSures/NABU-LIB](https://github.com/DJSures/NABU-LIB)
+### OLD DEPENDENCY
+> The games in this repo depends on NABU-LIB developed by DJSures. [https://github.com/DJSures/NABU-LIB](https://github.com/DJSures/NABU-LIB)
+
+More recently, I have had to split away from NABU-LIB to support Graphics Mode
+1 and other compatibility features for the Z80-Retro! and Z180-Nouveau
+projects.  You can find my copy of NABU-LIB used for compiling these games at
+[https://github.com/linuxplayground/NABU-LIB.git](https://github.com/linuxplayground/NABU-LIB.git)
 
 ## z80retro-lib
 
